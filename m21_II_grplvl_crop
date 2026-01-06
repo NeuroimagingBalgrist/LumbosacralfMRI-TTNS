@@ -1,0 +1,81 @@
+#!/bin/bash
+
+DIR=$1
+ses=$2
+run_min=$3
+num_sub=$4
+num_choose=$5
+
+DIR_grp=$DIR/03_Processing/grplvl_randomise/${num_choose}of${num_sub}sub/${run_min}
+DIR_results=$DIR/04_Results/21_grplvl_randomise/${num_choose}of${num_sub}sub/${run_min}
+
+mkdir -vp $DIR_results
+rm $DIR_results/${ses}*
+
+# ------------------------------------------------------------------------------
+# Crop each permutation into results folder
+tstat_list=(`ls ${DIR_grp}/${ses}_${num_choose}of${num_sub}sub-*_${run_min}_tstat1.nii.gz`)
+pstat_list=(`ls ${DIR_grp}/${ses}_${num_choose}of${num_sub}sub-*_${run_min}_tfce_corrp_tstat1.nii.gz`)
+
+
+for perm in ${!tstat_list[@]}; do
+
+  sct_crop_image \
+    -i ${tstat_list[$perm]} \
+    -xmin 20 -xmax 50 \
+    -ymin 20 -ymax 50 \
+    -o $DIR_results/$(basename ${tstat_list[$perm]::-7}_cr.nii)
+
+  sct_crop_image \
+    -i ${pstat_list[$perm]} \
+    -xmin 20 -xmax 50 \
+    -ymin 20 -ymax 50 \
+    -o $DIR_results/$(basename ${pstat_list[$perm]::-7}_cr.nii)
+
+done
+
+
+# ------------------------------------------------------------------------------
+# Calculate mean and STD t-score
+tstat_cr_list=(`ls ${DIR_results}/${ses}_${num_choose}of${num_sub}sub-*_${run_min}_tstat1_cr.nii`)
+tstat_cr_mean=$DIR_results/${ses}_${num_choose}of${num_sub}sub-mean_${run_min}_tstat1_cr.nii
+tstat_cr_std=$DIR_results/${ses}_${num_choose}of${num_sub}sub-std_${run_min}_tstat1_cr.nii
+
+sct_image \
+  -i ${tstat_cr_list[@]} \
+  -concat t \
+  -o $tstat_cr_mean
+
+fslmaths \
+  $tstat_cr_mean \
+  -Tstd \
+  $tstat_cr_std
+gzip -df ${tstat_cr_std}.gz
+
+sct_maths \
+  -i $tstat_cr_mean \
+  -mean t \
+  -o $tstat_cr_mean
+
+
+# ------------------------------------------------------------------------------
+# Calculate mean and STD p-value
+pstat_cr_list=(`ls ${DIR_results}/${ses}_${num_choose}of${num_sub}sub-*_${run_min}_tfce_corrp_tstat1_cr.nii`)
+pstat_cr_mean=$DIR_results/${ses}_${num_choose}of${num_sub}sub-mean_${run_min}_tfce_corrp_tstat1_cr.nii
+pstat_cr_std=$DIR_results/${ses}_${num_choose}of${num_sub}sub-std_${run_min}_tfce_corrp_tstat1_cr.nii
+
+sct_image \
+  -i ${pstat_cr_list[@]} \
+  -concat t \
+  -o $pstat_cr_mean
+
+fslmaths \
+  $pstat_cr_mean \
+  -Tstd \
+  $pstat_cr_std
+gzip -df ${pstat_cr_std}.gz
+
+sct_maths \
+  -i $pstat_cr_mean \
+  -mean t \
+  -o $pstat_cr_mean

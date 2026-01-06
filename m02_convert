@@ -1,0 +1,13 @@
+#!/bin/bash
+
+dicom=$1
+nifti=$2
+
+rm -rf $nifti
+mkdir -p $nifti
+
+dcm2niix -z y -i y -f "%s_%p" -o $nifti $dicom
+
+cd $nifti
+rename -e 's/\d+/sprintf("%02d",$&)/e' -- *.nii.gz
+rename -e 's/\d+/sprintf("%02d",$&)/e' -- *.json

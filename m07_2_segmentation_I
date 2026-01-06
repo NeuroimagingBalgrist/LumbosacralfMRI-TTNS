@@ -1,0 +1,21 @@
+#!/bin/bash
+
+anat=$1
+
+# Make segmentation directory
+DIR=$(dirname $(dirname $anat))
+mkdir -p $DIR/segm
+
+# Copy anatomical image
+cp $anat $DIR/segm
+
+# Copy functional image
+func=${2}/sublvl_func/func_mc_mean.nii.gz
+cp $func $DIR/segm
+
+# Create txt files for csa and tip
+file_csa=$DIR/segm/anat_cr_mc_csa_kuc.txt
+test -f $file_csa || echo 'To be replaced with stats from JIM' > $file_csa
+
+file_tip=$DIR/segm/anat_cr_mc_tip_kuc.txt
+test -f $file_tip || echo 'Tip slice in fsl/sct convention (first slice is 0)' > $file_tip

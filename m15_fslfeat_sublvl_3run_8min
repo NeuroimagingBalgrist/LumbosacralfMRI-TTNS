@@ -1,0 +1,39 @@
+#!/bin/bash
+
+input=$1
+
+DIR=$(dirname $(dirname $(dirname $input)))
+ses=$(basename $(dirname $(dirname $(dirname $(dirname $input)))))
+sub=$(basename $(dirname $(dirname $(dirname $(dirname $(dirname $input))))))
+
+rm -rf $DIR/sublvl_3run_8min.gfeat
+
+file="$DIR/${sub}_${ses}_fslfeat_3run_8min.fsf"
+
+cp m15_fslfeat_sublvl_3run.fsf $file
+
+search='outputdirectory_tag'
+replace="$DIR/sublvl_3run_8min"
+sed -i "s+$search+$replace+" $file
+
+search='treshholdmask_tag'
+replace="${DIR}/func_mc_mean_msc_man.nii.gz"
+sed -i "s+$search+$replace+" $file
+
+search='ptreshhold_tag'
+replace="0.05"
+sed -i "s+$search+$replace+" $file
+
+search='run1_tag'
+replace="$DIR/run1/8_min/runlvl.feat"
+sed -i "s+$search+$replace+" $file
+
+search='run2_tag'
+replace="$DIR/run2/8_min/runlvl.feat"
+sed -i "s+$search+$replace+" $file
+
+search='run3_tag'
+replace="$DIR/run3/8_min/runlvl.feat"
+sed -i "s+$search+$replace+" $file
+
+feat $file

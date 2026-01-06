@@ -1,0 +1,25 @@
+#!/bin/bash
+
+DIR=$1
+subject=$2
+session=$3
+run_min=$4
+
+DIR_sub=$DIR/03_Processing/${subject}/sublvl_megre_zstat1
+DIR_results=$DIR/04_Results/20_sublvl_megre_zstat1/${subject}
+
+mkdir -vp $DIR_results
+
+
+sct_maths \
+  -i $DIR_sub/${subject}_${session}_${run_min}_zstat1.nii.gz \
+  -mul $DIR_sub/${subject}_${session}_anat_cr_mc_msc_man.nii.gz \
+  -o $DIR_sub/temp.nii.gz
+
+sct_crop_image \
+  -i $DIR_sub/temp.nii.gz \
+  -xmin 15 -xmax 82 \
+  -ymin 15 -ymax 82 \
+  -o $DIR_results/${subject}_${session}_${run_min}_zstat1_cr_mask.nii.gz
+
+rm $DIR_sub/temp.nii.gz

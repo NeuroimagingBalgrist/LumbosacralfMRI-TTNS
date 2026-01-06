@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# ------------------------------------------------------------------------------
+# Registration from EPI to MEGRE
+inputf=${1}/sublvl_func/func_mc_mean.nii.gz
+inputfm=${inputf::-7}_msc_man.nii.gz
+inputa=$2
+inputam=${inputa::-7}_msc_man.nii.gz
+
+
+DIR=$(dirname $inputf)
+reganat=$DIR/reg_anat
+
+mkdir -p $reganat
+
+sct_register_multimodal \
+	-i $inputf \
+	-d $inputa \
+	-iseg $inputfm \
+	-dseg $inputam \
+	-param step=1,type=seg,algo=centermass,metric=MeanSquares,slicewise=1,smooth=3:step=2,type=seg,algo=bsplinesyn,metric=MeanSquares,slicewise=1,iter=10 \
+	-x spline \
+	-ofolder $reganat \
+	-owarp $reganat/warp_epi2megre.nii.gz \
+  -owarpinv $reganat/warp_megre2epi.nii.gz
+
+# ------------------------------------------------------------------------------
+# Registration from MEGRE to PAM50
+anat=${2::-3}
+
+gzip -dk ${anat}.gz
+
+txtfile_csa=${anat::-4}_csa.txt
+txtfile_tip=${anat::-4}_tip.txt
+label=${anat::-4}_label.nii
+
+output=$(dirname $anat)/reg_temp
+rm -rf $output
+mkdir -p $output
+
+# Create LSE label (NEW! ID 59) from CSA data
+matlab -nodisplay -r "m09_registration_PAM50('"$anat"', '"$txtfile_csa"'); quit"
+
+# Add tip label (conus medullaris, ID 60) from segmentation textfile
+tip_slice=$(tail -n +2 $txtfile_tip)
+sct_label_utils \
+  -i $label \
+  -create-add 48,48,$tip_slice,60 \
+  -o $label
+
+# Fix header and data type of label
+sct_image \
+  -i $anat \
+  -copy-header $label \
+  -o $label
+sct_image \
+  -i $label \
+  -type uint8 \
+  -o $label
+
+gzip -f $label
+
+# Create LSE label (NEW! ID 59) in PAM50 acording to Frostell (approx T12 vertrebra body)
+pam50_label_disc=$SCT_DIR/data/PAM50/template/PAM50_label_disc.nii.gz
+sct_label_utils \
+  -i $pam50_label_disc \
+  -create-add 70,70,143,59 \
+  -o $pam50_label_disc
+
+
+# Regist to PAM50 template (must use -ldisc argument!)
+sct_register_to_template \
+  -i $anat \
+	-s ${anat::-4}_msc_man.nii.gz \
+	-ldisc ${label}.gz \
+	-c t2 \
+	-ref subject \
+	-ofolder $output
+
+gzip $output/*.nii
+rm $anat

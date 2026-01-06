@@ -1,0 +1,73 @@
+#!/bin/bash
+
+func=${1}/sublvl_func/func_mc_mean.nii.gz
+
+DIR_func=$(dirname $func)
+DIR_segm=$(dirname $(dirname ${DIR_func}))/segm
+
+
+# Copy and fix msc
+cp ${DIR_segm}/func_mc_mean_msc_jim.nii.gz ${DIR_func}
+#
+sct_image \
+  -i $func \
+  -copy-header ${func::-7}_msc_jim.nii.gz \
+  -o ${func::-7}_msc_jim_cor.nii.gz
+
+# Safety against negative values inside the mask from JIM
+sct_maths \
+  -i ${func::-7}_msc_jim_cor.nii.gz \
+  -mul ${func::-7}_msc_jim_cor.nii.gz \
+  -o ${func::-7}_msc_jim_cor.nii.gz
+
+sct_maths \
+  -i ${func::-7}_msc_jim_cor.nii.gz \
+  -bin 0.000001 \
+  -o ${func::-7}_msc_man.nii.gz \
+  -type uint8
+
+rm ${func::-7}_msc_jim.nii.gz
+rm ${func::-7}_msc_jim_cor.nii.gz
+
+
+# Copy and fix mcsf
+cp ${DIR_segm}/func_mc_mean_mcsf_jim.nii.gz ${DIR_func}
+
+sct_image \
+  -i $func \
+  -copy-header ${func::-7}_mcsf_jim.nii.gz \
+  -o ${func::-7}_mcsf_jim_cor.nii.gz
+
+# Safety against negative values inside the mask from JIM
+sct_maths \
+  -i ${func::-7}_mcsf_jim_cor.nii.gz \
+  -mul ${func::-7}_mcsf_jim_cor.nii.gz \
+  -o ${func::-7}_mcsf_jim_cor.nii.gz
+
+sct_maths \
+  -i ${func::-7}_mcsf_jim_cor.nii.gz \
+  -bin 0.000001 \
+  -o ${func::-7}_mcsf_man.nii.gz \
+  -type uint8
+
+rm ${func::-7}_mcsf_jim.nii.gz
+rm ${func::-7}_mcsf_jim_cor.nii.gz
+
+
+# Correct the CSF mask by making sure no SC plus 2 voxel dilation is included.
+sct_maths \
+  -i ${func::-7}_msc_man.nii.gz \
+  -dilate 2 -shape disk -dim 2 \
+  -o ${func::-7}_msc_man_dil.nii
+sct_maths \
+  -i ${func::-7}_msc_man_dil.nii \
+  -mul ${func::-7}_mcsf_man.nii.gz \
+  -o ${func::-7}_msc_man_dilxmcsf.nii
+
+sct_maths \
+  -i ${func::-7}_mcsf_man.nii.gz \
+  -sub ${func::-7}_msc_man_dilxmcsf.nii \
+  -o ${func::-7}_mcsf_cor.nii.gz \
+  -type uint8
+
+rm ${func::-7}_msc_man_dil*

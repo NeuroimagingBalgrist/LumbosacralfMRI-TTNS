@@ -1,0 +1,17 @@
+#!/bin/bash
+
+func=${1}/sublvl_func/func_mc_mean.nii.gz
+
+func_msc=${func::-7}_msc_man.nii.gz
+func_mcsf=${func::-7}_mcsf_man.nii.gz
+func_mcsf_cor=${func::-7}_mcsf_cor.nii.gz
+
+run=${2}
+
+run_msc=${run::-7}_mc_mean_msc_man.nii.gz
+run_mcsf=${run::-7}_mc_mean_mcsf_man.nii.gz
+run_mcsf_cor=${run::-7}_mc_mean_mcsf_cor.nii.gz
+
+cp ${func_msc} ${run_msc}
+cp ${func_mcsf} ${run_mcsf}
+cp ${func_mcsf_cor} ${run_mcsf_cor}

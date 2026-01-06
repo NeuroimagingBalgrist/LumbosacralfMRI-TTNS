@@ -1,0 +1,109 @@
+#!/bin/bash
+
+DIR=$1
+
+DIR_neuro=$DIR/90_neuro_segm
+DIR_axial=$DIR/90_axial_segm
+
+DIR_grpmask=$DIR/91_grplvl_mask
+rm -rf $DIR_grpmask
+mkdir -vp $DIR_grpmask
+
+neuro_all=( \
+    $DIR_neuro/PAM50_neuro_L1.nii.gz \
+    $DIR_neuro/PAM50_neuro_L2.nii.gz \
+    $DIR_neuro/PAM50_neuro_L3.nii.gz \
+    $DIR_neuro/PAM50_neuro_L4.nii.gz \
+    $DIR_neuro/PAM50_neuro_L5.nii.gz \
+    $DIR_neuro/PAM50_neuro_S1.nii.gz \
+    $DIR_neuro/PAM50_neuro_S2.nii.gz \
+    $DIR_neuro/PAM50_neuro_S3.nii.gz \
+    $DIR_neuro/PAM50_neuro_S4.nii.gz \
+    $DIR_neuro/PAM50_neuro_S5.nii.gz \
+  )
+
+quad_all=( \
+  ${DIR_axial}/PAM50_cord_quad_DL.nii.gz \
+  ${DIR_axial}/PAM50_cord_quad_DR.nii.gz \
+  ${DIR_axial}/PAM50_cord_quad_VL.nii.gz \
+  ${DIR_axial}/PAM50_cord_quad_VR.nii.gz \
+  )
+
+
+#-------------------------------------------------------------------------------
+# Create ROI by multiplying the neurological and quadrant segments
+roi_all=()
+for a in ${!neuro_all[@]}; do
+  neuro=${neuro_all[$a]}
+  for b in ${!quad_all[@]}; do
+    quad=${quad_all[$b]}
+
+    name_neuro=$(basename $neuro)
+    name_quad=$(basename $quad)
+    roi_all+=(${DIR_grpmask}/${name_neuro:0:5}_ROI_${name_neuro:12:-7}_${name_quad:16:-7}.nii.gz)
+    roi_num=$((a*${#quad_all[@]}+b))
+
+    sct_maths \
+      -i $neuro \
+      -mul $quad \
+      -type uint8 \
+      -o ${roi_all[$roi_num]}
+
+  done
+done
+
+
+#-------------------------------------------------------------------------------
+# Crop all maps for easier visualization and store uncompressed for matlab
+DIR_crop=$DIR_grpmask/crop
+mkdir -vp $DIR_crop
+
+xymin=55
+xymax=85
+zmin=40
+zmax=220
+
+# Neurological
+for l in ${!neuro_all[@]}; do
+  workfile=${neuro_all[$l]}
+  workname=$(basename $workfile)
+
+  sct_crop_image \
+    -i $workfile \
+    -xmin $xymin -xmax $xymax -ymin $xymin -ymax $xymax -zmin $zmin -zmax $zmax \
+    -o $DIR_crop/${workname:0:5}_cr${workname:5:-3}
+done
+
+# Quadrants
+for m in ${!quad_all[@]}; do
+  workfile=${quad_all[$m]}
+  workname=$(basename $workfile)
+
+  echo $DIR_crop/${workname:0:5}_cr${workname:5}
+
+  sct_crop_image \
+    -i $workfile \
+    -xmin $xymin -xmax $xymax -ymin $xymin -ymax $xymax -zmin $zmin -zmax $zmax \
+    -o $DIR_crop/${workname:0:5}_cr${workname:5:-3}
+done
+
+# ROI
+for n in ${!roi_all[@]}; do
+  workfile=${roi_all[$n]}
+  workname=$(basename $workfile)
+
+  echo $DIR_crop/${workname:0:5}_cr${workname:5}
+
+  sct_crop_image \
+    -i $workfile \
+    -xmin $xymin -xmax $xymax -ymin $xymin -ymax $xymax -zmin $zmin -zmax $zmax \
+    -o $DIR_crop/${workname:0:5}_cr${workname:5:-3}
+done
+
+
+#-------------------------------------------------------------------------------
+# Crop spinal cord for easier visualization and store uncompressed for matlab
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_cord.nii.gz \
+  -xmin $xymin -xmax $xymax -ymin $xymin -ymax $xymax -zmin $zmin -zmax $zmax \
+  -o $DIR_crop/PAM50_cr_cord.nii

@@ -1,0 +1,58 @@
+#!/bin/bash
+
+BIDS=$1
+anat_dir=$2
+
+mkdir -p $anat_dir
+
+for i in {1..6}
+do
+  sct_image \
+    -i $BIDS/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${i}_echo-01_MEGRE.nii.gz \
+       $BIDS/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${i}_echo-02_MEGRE.nii.gz \
+       $BIDS/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${i}_echo-03_MEGRE.nii.gz \
+       $BIDS/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${i}_echo-04_MEGRE.nii.gz \
+       $BIDS/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${i}_echo-05_MEGRE.nii.gz \
+    -concat t \
+    -o $anat_dir/temp_run-0${i}_echo-01-05_MEGRE.nii.gz
+
+  sct_maths \
+    -i $anat_dir/temp_run-0${i}_echo-01-05_MEGRE.nii.gz \
+    -rms t \
+    -o $anat_dir/temp_run-0${i}_echo-rms_MEGRE.nii.gz
+done
+
+sct_image \
+  -i $anat_dir/temp_run-01_echo-rms_MEGRE.nii.gz \
+     $anat_dir/temp_run-02_echo-rms_MEGRE.nii.gz \
+     $anat_dir/temp_run-03_echo-rms_MEGRE.nii.gz \
+     $anat_dir/temp_run-04_echo-rms_MEGRE.nii.gz \
+     $anat_dir/temp_run-05_echo-rms_MEGRE.nii.gz \
+     $anat_dir/temp_run-06_echo-rms_MEGRE.nii.gz \
+  -concat t \
+  -o $anat_dir/temp_run-01-06_echo-rms_MEGRE.nii.gz
+
+sct_crop_image \
+  -i $anat_dir/temp_run-01-06_echo-rms_MEGRE.nii.gz \
+  -xmin 144 -xmax 240 \
+  -ymin 144 -ymax 240 \
+  -o $anat_dir/temp_run-01-06_echo-rms_MEGRE_cr.nii.gz
+
+
+sct_maths \
+  -i $anat_dir/temp_run-01-06_echo-rms_MEGRE_cr.nii.gz \
+  -mean t \
+  -o $anat_dir/anat_cr.nii.gz
+
+
+mcflirt \
+  -in $anat_dir/temp_run-01-06_echo-rms_MEGRE_cr.nii.gz  \
+  -spline_final -cost leastsquares -report \
+  -o $anat_dir/temp_run-01-06_echo-rms_MEGRE_cr_mc.nii.gz
+
+sct_maths \
+  -i $anat_dir/temp_run-01-06_echo-rms_MEGRE_cr_mc.nii.gz \
+  -mean t \
+  -o $anat_dir/anat_cr_mc.nii.gz
+
+rm $anat_dir/temp*

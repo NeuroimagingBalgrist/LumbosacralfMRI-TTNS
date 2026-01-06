@@ -1,0 +1,12 @@
+#!/bin/bash
+
+input=$1
+output=$2
+
+DIR=$(dirname $output)
+mkdir -p $DIR
+
+sct_crop_image \
+  -i $input \
+  -xmin 48 -xmax 95 \
+  -o ${output}

@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# Rerun in case the directories have moved (from m09_regressors)
+input=${1::-7}_mc.nii
+DIR=$(dirname $input)
+NAME=$(basename $input)
+find $DIR/regressors -type f -name "*params*.nii" | sort -V | tee >$DIR/regressors/${NAME::-4}_regressors_list.txt
+find $DIR/regressors -type f -name "*acompcor*.nii" | sort -V | tee >>$DIR/regressors/${NAME::-4}_regressors_list.txt
+find $DIR/regressors -type f -name "*outlier*.nii" | sort -V | tee >>$DIR/regressors/${NAME::-4}_regressors_list.txt
+
+# Actual fsl script
+input=${1::-7}_mc
+
+DIR=$(dirname $input)
+NAME=$(basename $input)
+
+rm -rf $DIR/runlvl.feat
+
+file="$DIR/${NAME::-6}_10min_fslfeat.fsf"
+cp m14_fslfeat.fsf $file
+
+conditions="$DIR/${NAME::4}_10min_conditions.txt"
+cp m14_fslfeat_10min_conditions.txt $conditions
+
+
+search='outputdirectory_tag'
+replace="$DIR/runlvl"
+sed -i "s+$search+$replace+" $file
+
+header=$(fslhd ${input}  | grep "dim4" | awk '{print $2}')
+search='NVolumes_tag'
+replace="$(echo ${header} | awk '{print $1}')"
+sed -i "s+$search+$replace+" $file
+
+search='TR_tag'
+replace="$(echo ${header} | awk '{print $2}')"
+sed -i "s+$search+$replace+" $file
+
+search='regressorlist_tag'
+replace="$DIR/regressors/${NAME}_regressors_list.txt"
+sed -i "s+$search+$replace+" $file
+
+search='treshholdmask_tag'
+replace="$(dirname $DIR)/${NAME}_mean_msc_man.nii.gz"
+sed -i "s+$search+$replace+" $file
+
+search='image_tag'
+replace="$DIR/${NAME}_sm"
+sed -i "s+$search+$replace+" $file
+
+search='condition_tag'
+replace="$conditions"
+sed -i "s+$search+$replace+" $file
+
+search='hrf_tag'
+replace="$FSLDIR/data/feat5/default_flobs.flobs/hrfbasisfns.txt"
+sed -i "s+$search+$replace+" $file
+
+
+echo 'Running FSL FEAT for '$NAME
+feat $file
+
+
+# Create dummy registration files
+DIR_stats=${DIR}/runlvl.feat/stats
+DIR_regstd=${DIR}/runlvl.feat/reg_standard
+mkdir -vp $DIR_regstd/reg
+mkdir -vp $DIR_regstd/stats
+
+cp $DIR/runlvl.feat/example_func.nii.gz $DIR_regstd/example_func.nii.gz
+cp $DIR/runlvl.feat/mean_func.nii.gz $DIR_regstd/mean_func.nii.gz
+
+cp $DIR_stats/cope1.nii.gz $DIR_regstd/stats/cope1.nii.gz
+cp $DIR_stats/cope2.nii.gz $DIR_regstd/stats/cope2.nii.gz
+cp $DIR_stats/cope3.nii.gz $DIR_regstd/stats/cope3.nii.gz
+
+cp $DIR_stats/varcope1.nii.gz $DIR_regstd/stats/varcope1.nii.gz
+cp $DIR_stats/varcope2.nii.gz $DIR_regstd/stats/varcope2.nii.gz
+cp $DIR_stats/varcope3.nii.gz $DIR_regstd/stats/varcope3.nii.gz
+
+DIR_reg=$DIR/runlvl.feat/reg
+mkdir -p $DIR_reg
+cp m14_reg/* $DIR_reg
+cp $(dirname $(dirname $DIR))/sublvl_func/func_mc_mean.nii.gz $DIR_reg/standard.nii.gz
+
+# No epi2epi warping files exist. The files are just dummies but if problems show
+# up register epi to epi and use 'sct_image -to-fsl' to create correct files.
+cp $DIR/runlvl.feat/example_func.nii.gz $DIR_reg/example_func2standard.nii.gz
+cp $(dirname $(dirname $DIR))/sublvl_func/func_mc_mean.nii.gz $DIR_reg/standard2example_func.nii.gz
+
+updatefeatreg $(dirname $DIR_stats) -gifs

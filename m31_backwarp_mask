@@ -1,0 +1,184 @@
+#!/bin/bash
+
+directory=$1
+
+subjectall=( \
+  sub-ltr01 \
+  sub-ltr02 \
+  sub-ltr03 \
+  sub-ltr04 \
+  sub-ltr05 \
+  sub-ltr06 \
+  sub-ltr07 \
+  sub-ltr08 \
+  sub-ltr09 \
+  sub-ltr10 \
+  sub-ltr11 \
+  sub-ltr12 \
+  sub-ltr13 \
+  sub-ltr14 \
+  sub-ltr15 \
+  sub-ltr16 \
+  sub-ltr17 \
+  sub-ltr18 \
+  sub-ltr19 \
+  sub-ltr20 \
+  sub-ltr21 \
+  sub-ltr22 \
+  sub-ltr23 \
+  sub-ltr24 \
+  sub-ltr25 \
+  )
+
+sessionall=( \
+  ses-01 \
+  ses-02 \
+  )
+
+#--------------------------------------------------------------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------------------------------------------------------------
+subprocesses=5
+for i in ${!subjectall[@]}; do
+  (
+  subject=${subjectall[$i]}
+
+  for k in ${!sessionall[@]}; do
+    session=${sessionall[$k]}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Get target and warping fields
+    pathPro=$directory/03_Processing/${subject}/${session}
+    pathRes=$directory/04_Results
+
+    epi=${pathPro}/func/sublvl_func/func_mc_mean.nii.gz
+    warp_templ2anat=${pathPro}/anat/reg_temp/warp_template2anat.nii.gz
+    warp_anat2epi=${pathPro}/func/sublvl_func/reg_anat/warp_megre2epi.nii.gz
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Create directory for outputs
+    pathWarp=${pathPro}/func/sublvl_func/warped_masks
+    # rm -rv ${pathWarp}
+    mkdir -vp ${pathWarp}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Warp right hemisphere
+    templ_hemi_R=${pathRes}/90_axial_segm/PAM50_cord_hemi_R.nii.gz
+    epi_hemi_R=${pathWarp}/warp_PAM50_cord_hemi_R.nii
+
+    sct_apply_transfo \
+      -i ${templ_hemi_R} \
+      -d ${epi} \
+      -w ${warp_templ2anat} ${warp_anat2epi} \
+      -x nn \
+      -o ${epi_hemi_R}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Warp dorsal right quadrant
+    templ_quad_DR=${pathRes}/90_axial_segm/PAM50_cord_quad_DR.nii.gz
+    epi_quad_DR=${pathWarp}/warp_PAM50_cord_quad_DR.nii
+
+    sct_apply_transfo \
+      -i ${templ_quad_DR} \
+      -d ${epi} \
+      -w ${warp_templ2anat} ${warp_anat2epi} \
+      -x nn \
+      -o ${epi_quad_DR}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Warp neurological levels
+    neuroall=( \
+      PAM50_neuro_L1.nii.gz \
+      PAM50_neuro_L2.nii.gz \
+      PAM50_neuro_L3.nii.gz \
+      PAM50_neuro_L4.nii.gz \
+      PAM50_neuro_L5.nii.gz \
+      PAM50_neuro_S1.nii.gz \
+      PAM50_neuro_S2.nii.gz \
+      PAM50_neuro_S3.nii.gz \
+      )
+    for n in ${!neuroall[@]}; do
+      templ_neuro=${pathRes}/90_neuro_segm/${neuroall[$n]}
+      epi_neuro=${pathWarp}/warp_${neuroall[$n]::-3}
+
+      sct_apply_transfo \
+        -i ${templ_neuro} \
+        -d ${epi} \
+        -w ${warp_templ2anat} ${warp_anat2epi} \
+        -x nn \
+        -o ${epi_neuro}
+
+    done
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Warp binarized (p<0.05) and combined clusters from group results
+    sct_maths \
+      -i ${pathRes}/21_grplvl_randomise/25of25sub/4run_10min/ses-01_25of25sub-mean_4run_10min_tfce_corrp_tstat1_cr.nii \
+      -bin 0.95 \
+      -o ${pathWarp}/temp_1.nii
+    sct_maths \
+      -i ${pathRes}/21_grplvl_randomise/25of25sub/4run_10min/ses-02_25of25sub-mean_4run_10min_tfce_corrp_tstat1_cr.nii \
+      -bin 0.95 \
+      -o ${pathWarp}/temp_2.nii
+    sct_maths \
+      -i ${pathWarp}/temp_1.nii \
+      -add ${pathWarp}/temp_2.nii \
+      -o ${pathWarp}/temp_3.nii
+    sct_maths \
+      -i ${pathWarp}/temp_3.nii \
+      -bin 0.1 \
+      -o ${pathWarp}/temp_3.nii
+
+    epi_clusters_05=${pathWarp}/warp_clusters_05.nii
+
+    sct_apply_transfo \
+      -i ${pathWarp}/temp_3.nii \
+      -d ${epi} \
+      -w ${warp_templ2anat} ${warp_anat2epi} \
+      -x nn \
+      -o ${epi_clusters_05}
+
+    rm ${pathWarp}/temp*
+
+#--------------------------------------------------------------------------------------------------------------------------------
+    # Warp binarized (p<0.01) and combined clusters from group results
+    sct_maths \
+      -i ${pathRes}/21_grplvl_randomise/25of25sub/4run_10min/ses-01_25of25sub-mean_4run_10min_tfce_corrp_tstat1_cr.nii \
+      -bin 0.99 \
+      -o ${pathWarp}/temp_1.nii
+    sct_maths \
+      -i ${pathRes}/21_grplvl_randomise/25of25sub/4run_10min/ses-02_25of25sub-mean_4run_10min_tfce_corrp_tstat1_cr.nii \
+      -bin 0.99 \
+      -o ${pathWarp}/temp_2.nii
+    sct_maths \
+      -i ${pathWarp}/temp_1.nii \
+      -add ${pathWarp}/temp_2.nii \
+      -o ${pathWarp}/temp_3.nii
+    sct_maths \
+      -i ${pathWarp}/temp_3.nii \
+      -bin 0.1 \
+      -o ${pathWarp}/temp_3.nii
+
+    epi_clusters_01=${pathWarp}/warp_clusters_01.nii
+
+    sct_apply_transfo \
+      -i ${pathWarp}/temp_3.nii \
+      -d ${epi} \
+      -w ${warp_templ2anat} ${warp_anat2epi} \
+      -x nn \
+      -o ${epi_clusters_01}
+
+    rm ${pathWarp}/temp*
+#--------------------------------------------------------------------------------------------------------------------------------
+
+  done
+
+  ) &
+  if [[ $(jobs -r -p | wc -l) -ge $subprocesses ]]; then
+    # now there are $N jobs already running, so wait here for any job
+    # to be finished so there is a place to start next one.
+    wait -n
+  fi
+
+done
+wait

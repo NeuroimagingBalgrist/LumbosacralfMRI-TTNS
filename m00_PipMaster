@@ -1,0 +1,456 @@
+#!/bin/bash
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
+directory=
+
+segm_transfer=
+
+subjectall=( \
+  sub-ltr01 \
+  sub-ltr02 \
+  sub-ltr03 \
+  sub-ltr04 \
+  sub-ltr05 \
+  sub-ltr06 \
+  sub-ltr07 \
+  sub-ltr08 \
+  sub-ltr09 \
+  sub-ltr10 \
+  sub-ltr11 \
+  sub-ltr12 \
+  sub-ltr13 \
+  sub-ltr14 \
+  sub-ltr15 \
+  sub-ltr16 \
+  sub-ltr17 \
+  sub-ltr18 \
+  sub-ltr19 \
+  sub-ltr20 \
+  sub-ltr21 \
+  sub-ltr22 \
+  sub-ltr23 \
+  sub-ltr24 \
+  sub-ltr25 \
+  sub-ltr90 \
+  )
+
+sessionall=( \
+  ses-01 \
+  ses-02 \
+  )
+
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+cd $(dirname $0)
+
+# Loop around subjects. Change into script dir and create the necessary names and folders.
+subprocesses=5
+for i in ${!subjectall[@]}; do
+(
+subject=${subjectall[$i]}
+
+for k in ${!sessionall[@]}; do
+session=${sessionall[$k]}
+
+echo -e "\033[7;97m \n ===== Started ===== \n ${subject}_${session} at $(date +'%T %d/%m/%Y') \n \033[0m"
+
+dicom=$directory/99_TransferMerlin/${subject}_${session}_dicom
+nifti=$directory/99_TransferMerlin/${subject}_${session}_nifti
+BIDS=$directory/02_BIDS/${subject}/${session}
+processing=$directory/03_Processing/${subject}/${session}
+
+anat_dir=$processing/anat
+anat=$anat_dir/anat_cr_mc.nii.gz
+
+func_dir=$processing/func
+rest=$func_dir/rest/rest_cr.nii.gz
+run1=$func_dir/run1/run1_cr.nii.gz
+run2=$func_dir/run2/run2_cr.nii.gz
+run3=$func_dir/run3/run3_cr.nii.gz
+run4=$func_dir/run4/run4_cr.nii.gz
+
+# For full 10min analysis
+run1_10min=$func_dir/run1/10_min/run1_cr.nii.gz
+run2_10min=$func_dir/run2/10_min/run2_cr.nii.gz
+run3_10min=$func_dir/run3/10_min/run3_cr.nii.gz
+run4_10min=$func_dir/run4/10_min/run4_cr.nii.gz
+# For cropped 8min analysis
+run1_8min=$func_dir/run1/8_min/run1_cr.nii.gz
+run2_8min=$func_dir/run2/8_min/run2_cr.nii.gz
+run3_8min=$func_dir/run3/8_min/run3_cr.nii.gz
+run4_8min=$func_dir/run4/8_min/run4_cr.nii.gz
+# For cropped 6min analysis
+run1_6min=$func_dir/run1/6_min/run1_cr.nii.gz
+run2_6min=$func_dir/run2/6_min/run2_cr.nii.gz
+run3_6min=$func_dir/run3/6_min/run3_cr.nii.gz
+run4_6min=$func_dir/run4/6_min/run4_cr.nii.gz
+
+(
+echo Start $(date +'%T %d/%m/%Y') $'\n'
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 02 Convert ==================== \033[0m"
+# Requires rename package!
+bash m02_convert $dicom $nifti
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 03 Sorting ==================== \033[0m"
+bash m03_sorting $nifti $BIDS
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 04 Anat Preprocessing ==================== \033[0m"
+bash m04_anat_preproc $BIDS $anat_dir
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 05 Cropping ==================== \033[0m"
+bash m05_cropping ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-rest_bold.nii.gz ${rest}
+bash m05_cropping ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-01_bold.nii.gz ${run1}
+bash m05_cropping ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-02_bold.nii.gz ${run2}
+bash m05_cropping ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-03_bold.nii.gz ${run3}
+bash m05_cropping ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-04_bold.nii.gz ${run4}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 06 Motion Correction ==================== \033[0m"
+bash m06_2_motioncorrection ${func_dir}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 07 Segmentation ==================== \033[0m"
+echo -e "\033[7;109m ===== 07 Segmentation I ===== \033[0m"
+bash m07_2_segmentation_I ${anat} ${func_dir}
+
+echo -e "\033[7;109m ===== 07 Segmentation Manual in JIM 7 ===== \033[0m"
+mkdir -vp ${segm_transfer}/${subject}/${session}/
+rsync -avu ${processing}/segm/ ${segm_transfer}/${subject}/${session}/
+
+echo -e "\033[7;109m ===== 07 Segmentation II ===== \033[0m"
+rsync -avu  ${segm_transfer}/${subject}/${session}/ ${processing}/segm/
+bash m07_2_segmentation_II_anat $anat
+bash m07_2_segmentation_II_func ${func_dir}
+
+echo -e "\033[7;109m ===== 07 Segmentation III ===== \033[0m"
+echo -e "\033[7;109m Copying.. \033[0m"
+bash m07_2_segmentation_III_copy ${func_dir} ${rest}
+bash m07_2_segmentation_III_copy ${func_dir} ${run1}
+bash m07_2_segmentation_III_copy ${func_dir} ${run2}
+bash m07_2_segmentation_III_copy ${func_dir} ${run3}
+bash m07_2_segmentation_III_copy ${func_dir} ${run4}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 08 tSNR ==================== \033[0m"
+bash m08_tsnr ${rest}
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 09 Registration ==================== \033[0m"
+bash m09_registration $func_dir $anat
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 10 Temporal Crop ==================== \033[0m"
+bash m10_temporal_crop $run1
+bash m10_temporal_crop $run2
+bash m10_temporal_crop $run3
+bash m10_temporal_crop $run4
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 11 aCompCor ==================== \033[0m"
+echo -e "\\033[7;36m   10min..   \033[0m"
+bash m11_aCompCor $run1_10min
+bash m11_aCompCor $run2_10min
+bash m11_aCompCor $run3_10min
+bash m11_aCompCor $run4_10min
+
+echo -e "\\033[7;36m   8min..   \033[0m"
+bash m11_aCompCor $run1_8min
+bash m11_aCompCor $run2_8min
+bash m11_aCompCor $run3_8min
+bash m11_aCompCor $run4_8min
+
+echo -e "\\033[7;36m   6min..   \033[0m"
+bash m11_aCompCor $run1_6min
+bash m11_aCompCor $run2_6min
+bash m11_aCompCor $run3_6min
+bash m11_aCompCor $run4_6min
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 11 Regressors ==================== \033[0m"
+echo -e "\\033[7;36m   10min..   \033[0m"
+bash m12_regressors $run1_10min
+bash m12_regressors $run2_10min
+bash m12_regressors $run3_10min
+bash m12_regressors $run4_10min
+
+echo -e "\\033[7;36m   8min..   \033[0m"
+bash m12_regressors $run1_8min
+bash m12_regressors $run2_8min
+bash m12_regressors $run3_8min
+bash m12_regressors $run4_8min
+
+echo -e "\\033[7;36m   6min..   \033[0m"
+bash m12_regressors $run1_6min
+bash m12_regressors $run2_6min
+bash m12_regressors $run3_6min
+bash m12_regressors $run4_6min
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 13 Smoothing ==================== \033[0m"
+echo -e "\\033[7;36m   10min..   \033[0m"
+bash m13_smooth $run1_10min
+bash m13_smooth $run2_10min
+bash m13_smooth $run3_10min
+bash m13_smooth $run4_10min
+
+echo -e "\\033[7;36m   8min..   \033[0m"
+bash m13_smooth $run1_8min
+bash m13_smooth $run2_8min
+bash m13_smooth $run3_8min
+bash m13_smooth $run4_8min
+
+echo -e "\\033[7;36m   6min..   \033[0m"
+bash m13_smooth $run1_6min
+bash m13_smooth $run2_6min
+bash m13_smooth $run3_6min
+bash m13_smooth $run4_6min
+
+# --------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 14 FSL FEAT Run Level ==================== \033[0m"
+echo -e "\033[7;36m   10min..   \033[0m"
+bash m14_fslfeat_10min $run1_10min
+bash m14_fslfeat_10min $run2_10min
+bash m14_fslfeat_10min $run3_10min
+bash m14_fslfeat_10min $run4_10min
+
+echo -e "\033[7;36m   8min..   \033[0m"
+bash m14_fslfeat_8min $run1_8min
+bash m14_fslfeat_8min $run2_8min
+bash m14_fslfeat_8min $run3_8min
+bash m14_fslfeat_8min $run4_8min
+
+echo -e "\033[7;36m   6min..   \033[0m"
+bash m14_fslfeat_6min $run1_6min
+bash m14_fslfeat_6min $run2_6min
+bash m14_fslfeat_6min $run3_6min
+bash m14_fslfeat_6min $run4_6min
+
+# --------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 15 FSL FEAT Subject Level ==================== \033[0m"
+echo -e "\033[7;36m   4run 10min..   \033[0m"
+bash m15_fslfeat_sublvl_4run_10min $run1_10min
+echo -e "\033[7;36m   4run 8min..   \033[0m"
+bash m15_fslfeat_sublvl_4run_8min $run1_8min
+echo -e "\033[7;36m   4run 6min..   \033[0m"
+bash m15_fslfeat_sublvl_4run_6min $run1_6min
+
+echo -e "\033[7;36m   3run 10min..   \033[0m"
+bash m15_fslfeat_sublvl_3run_10min $run1_10min
+echo -e "\033[7;36m   3run 8min..   \033[0m"
+bash m15_fslfeat_sublvl_3run_8min $run1_8min
+echo -e "\033[7;36m   3run 6min..   \033[0m"
+bash m15_fslfeat_sublvl_3run_6min $run1_6min
+
+echo -e "\033[7;36m   2run 10min..   \033[0m"
+bash m15_fslfeat_sublvl_2run_10min $run1_10min
+echo -e "\033[7;36m   2run 8min..   \033[0m"
+bash m15_fslfeat_sublvl_2run_8min $run1_8min
+echo -e "\033[7;36m   2run 6min..   \033[0m"
+bash m15_fslfeat_sublvl_2run_6min $run1_6min
+
+echo -e "\033[7;36m   2run 10min 2nd half..   \033[0m"
+bash m15_fslfeat_sublvl_2run_10min_2ndhalf $run1_10min
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 16 Stats Transformation ==================== \033[0m"
+echo -e "\033[7;36m   4run 10min..   \033[0m"
+bash m16_stat_trafo $func_dir 4run_10min
+echo -e "\033[7;36m   4run 8min..   \033[0m"
+bash m16_stat_trafo $func_dir 4run_8min
+echo -e "\033[7;36m   4run 6min..   \033[0m"
+bash m16_stat_trafo $func_dir 4run_6min
+
+echo -e "\033[7;36m   3run 10min..   \033[0m"
+bash m16_stat_trafo $func_dir 3run_10min
+echo -e "\033[7;36m   3run 8min..   \033[0m"
+bash m16_stat_trafo $func_dir 3run_8min
+echo -e "\033[7;36m   3run 6min..   \033[0m"
+bash m16_stat_trafo $func_dir 3run_6min
+
+echo -e "\033[7;36m   2run 10min..   \033[0m"
+bash m16_stat_trafo $func_dir 2run_10min
+echo -e "\033[7;36m   2run 8min..   \033[0m"
+bash m16_stat_trafo $func_dir 2run_8min
+echo -e "\033[7;36m   2run 6min..   \033[0m"
+bash m16_stat_trafo $func_dir 2run_6min
+
+echo -e "\033[7;36m   2run 10min 2nd half..   \033[0m"
+bash m16_stat_trafo $func_dir 2run_10min_2ndhalf
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 20 Crop Subject Level ==================== \033[0m"
+echo -e "\033[7;36m   Copy MEGRE..   \033[0m"
+bash m20_sublvl_crop_megre $directory $subject $session
+
+echo -e "\033[7;36m   4run 10min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 4run_10min
+echo -e "\033[7;36m   4run 8min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 4run_8min
+echo -e "\033[7;36m   4run 6min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 4run_6min
+
+echo -e "\033[7;36m   3run 10min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 3run_10min
+echo -e "\033[7;36m   3run 8min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 3run_8min
+echo -e "\033[7;36m   3run 6min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 3run_6min
+
+echo -e "\033[7;36m   2run 10min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 2run_10min
+echo -e "\033[7;36m   2run 8min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 2run_8min
+echo -e "\033[7;36m   2run 6min..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 2run_6min
+
+echo -e "\033[7;36m   2run 10min 2nd half..   \033[0m"
+bash m20_sublvl_crop $directory $subject $session 2run_10min
+
+#--------------------------------------------------------------------------------------------------------------------------------
+echo $'\n'End $(date +'%T %d/%m/%Y')
+) > $directory/03_Processing/${subjectall[$i]}_${sessionall[$k]}_log.txt
+echo -e "\033[7;97m \n ===== Ended ===== \n ${subject}_${session} at $(date +'%T %d/%m/%Y') \n \033[0m"
+done
+
+) &
+if [[ $(jobs -r -p | wc -l) -ge $subprocesses ]]; then
+  # now there are $N jobs already running, so wait here for any job
+  # to be finished so there is a place to start next one.
+  wait -n
+fi
+
+done
+wait
+
+
+#-------------------------------------------------------------------------------
+results=$directory/04_Results
+
+sub_num=25
+select_num=20
+choose_numall=( \
+  5 \
+  7 \
+  9 \
+  11 \
+  13 \
+  15 \
+  17 \
+  19 \
+  21 \
+  23 \
+  25 \
+  )
+
+sessionall=( \
+  ses-01 \
+  # ses-02 \
+  )
+
+
+for l in ${!choose_numall[@]}; do
+  choose_num=${choose_numall[$l]}
+
+for m in ${!sessionall[@]}; do
+  session=${sessionall[$m]}
+  echo -e "\033[7;97m \n ===== Started ===== \n ${choose_num}of${sub_num}_${session} at $(date +'%T %d/%m/%Y') \n \033[0m"
+  (
+  echo Start $(date +'%T %d/%m/%Y') $'\n'
+
+  #--------------------------------------------------------------------------------------------------------------------------------
+  echo -e "\033[7;109m ==================== 21 I FSL Randomise Group Level ==================== \033[0m"
+  echo -e "\033[7;36m   4run 10min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 4run_10min $sub_num $choose_num $select_num
+  echo -e "\033[7;36m   4run 8min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 4run_8min $sub_num $choose_num $select_num
+  echo -e "\033[7;36m   4run 6min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 4run_6min $sub_num $choose_num $select_num
+
+  echo -e "\033[7;36m   3run 10min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 3run_10min $sub_num $choose_num $select_num
+  echo -e "\033[7;36m   3run 8min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 3run_8min $sub_num $choose_num $select_num
+  echo -e "\033[7;36m   3run 6min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 3run_6min $sub_num $choose_num $select_num
+
+  echo -e "\033[7;36m   2run 10min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 2run_10min $sub_num $choose_num $select_num
+  echo -e "\033[7;36m   2run 8min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 2run_8min $sub_num $choose_num $select_num
+  echo -e "\033[7;36m   2run 6min..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 2run_6min $sub_num $choose_num $select_num
+
+  echo -e "\033[7;36m   2run 10min 2nd half..   \033[0m"
+  bash m21_I_fslrandomise_grplvl_perm $directory $session 2run_10min_2ndhalf $sub_num $choose_num $select_num
+
+  #--------------------------------------------------------------------------------------------------------------------------------
+  echo -e "\033[7;109m ==================== 21 II Crop Group Level ==================== \033[0m"
+  echo -e "\033[7;36m   PAM50 T2 & Cord..   \033[0m"
+  bash m21_II_grplvl_crop_PAM50 $directory
+
+  echo -e "\033[7;36m   4run 10min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 4run_10min $sub_num $choose_num
+  echo -e "\033[7;36m   4run 8min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 4run_8min $sub_num $choose_num
+  echo -e "\033[7;36m   4run 6min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 4run_6min $sub_num $choose_num
+
+  echo -e "\033[7;36m   3run 10min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 3run_10min $sub_num $choose_num
+  echo -e "\033[7;36m   3run 8min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 3run_8min $sub_num $choose_num
+  echo -e "\033[7;36m   3run 6min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 3run_6min $sub_num $choose_num
+
+  echo -e "\033[7;36m   2run 10min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 2run_10min $sub_num $choose_num
+  echo -e "\033[7;36m   2run 8min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 2run_8min $sub_num $choose_num
+  echo -e "\033[7;36m   2run 6min..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 2run_6min $sub_num $choose_num
+
+  echo -e "\033[7;36m   2run 10min 2nd half..   \033[0m"
+  bash m21_II_grplvl_crop $directory $session 2run_10min_2ndhalf $sub_num $choose_num
+
+  #--------------------------------------------------------------------------------------------------------------------------------
+  echo $'\n'End $(date +'%T %d/%m/%Y')
+  ) > $directory/03_Processing/grplvl_randomise/${choose_numall[$l]}of${sub_num}_${sessionall[$m]}_log.txt
+  echo -e "\033[7;97m \n ===== Ended ===== \n ${choose_num}of${sub_num}_${session} at $(date +'%T %d/%m/%Y') \n \033[0m"
+
+done
+done
+wait
+
+
+#--------------------------------------------------------------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 20 Various Analysis ==================== \033[0m"
+bash m30_registration_quality $directory
+bash m31_backwarp_mask $directory
+
+# --------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 80 Collect Data from Results ==================== \033[0m"
+matlab -nodisplay -r "m80_overview(); quit"
+
+# --------------------------------------------------------------------------------------------------------------------------------
+echo -e "\033[7;109m ==================== 90 Create and Crop Masks ==================== \033[0m"
+Check Masks in 91_grplvl_mask else run
+bash m90_neuro_segm $results
+bash m90_axial_segm $results
+bash m91_grplvl_masks $results
+
+#--------------------------------------------------------------------------------------------------------------------------------
+runmin=$((SECONDS/60))
+runsec=$((SECONDS-60*runmin))
+echo -e "\033[7;97m This Script ran for $runmin minutes $runsec seconds! \033[0m"

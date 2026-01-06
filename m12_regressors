@@ -1,0 +1,48 @@
+#!/bin/bash
+
+input=${1::-7}_mc.nii
+
+DIR=$(dirname $input)
+NAME=$(basename $input)
+
+mask_sc=$(dirname $DIR)/${NAME::-4}_mean_msc_man.nii.gz
+
+echo -e "\033[7;109m ========== Motion Outliers ========== \033[0m"
+echo Doing $NAME ...
+
+rm $DIR/regressors/${NAME::-4}_outlier*
+
+fsl_motion_outliers \
+  -i $input \
+  -o $DIR/regressors/${NAME::-4}_outliers.txt \
+  -m ${mask_sc} \
+  --nomoco --dvars
+
+if test -f "$DIR/regressors/${NAME::-4}_outliers.txt"; then
+  gzip -dk ${input}.gz
+  echo -e "\033[7;109m"
+  matlab -nodisplay -r "m12_regressors('"$input"'); quit"
+  echo -e "\033[0m"
+  rm ${input}
+
+  echo -e "\033[7;109m ========== Correct Header ========== \033[0m"
+
+  outliers=`ls -dq $DIR/regressors/*outlier*.nii | wc -l`
+
+  for ((i=1; i<=$outliers; i++))
+  do
+    num=`printf %02g $i`
+    sct_image \
+      -i $DIR/regressors/${NAME::-4}_params_sct_x.nii \
+      -copy-header $DIR/regressors/${NAME::-4}_outlier${num}.nii \
+      -o $DIR/regressors/${NAME::-4}_outlier${num}.nii
+  done
+else
+  echo -e "\033[7;109m ========== No Motion Outliers! ========== \033[0m"
+fi
+
+echo -e "\033[7;109m ========== Write Regressor List ========== \033[0m"
+
+find $DIR/regressors -type f -name "*params*.nii" | sort -V | tee >$DIR/regressors/${NAME::-4}_regressors_list.txt
+find $DIR/regressors -type f -name "*acompcor*.nii" | sort -V | tee >>$DIR/regressors/${NAME::-4}_regressors_list.txt
+find $DIR/regressors -type f -name "*outlier*.nii" | sort -V | tee >>$DIR/regressors/${NAME::-4}_regressors_list.txt

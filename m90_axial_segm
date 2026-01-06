@@ -1,0 +1,43 @@
+#!/bin/bash
+
+DIR=$1
+
+DIR_90=$DIR/90_axial_segm
+rm -rf $DIR_90
+mkdir -vp $DIR_90
+
+#-------------------------------------------------------------------------------
+# Copy spinal cord segmentation from PAM50
+PAM50_cord=$SCT_DIR/data/PAM50/template/PAM50_cord.nii.gz
+cord_90=${DIR_90}/PAM50_cord.nii.gz
+cp $PAM50_cord $cord_90
+
+#-------------------------------------------------------------------------------
+# Make hemispheres in matlab
+matlab -nodisplay -r "m90_axial_segm('"${DIR_90}"'); quit"
+
+#-------------------------------------------------------------------------------
+# Make quadrant segmentations
+sct_maths \
+  -i ${DIR_90}/PAM50_cord_hemi_D.nii.gz \
+  -mul ${DIR_90}/PAM50_cord_hemi_L.nii.gz \
+  -type uint8 \
+  -o ${DIR_90}/PAM50_cord_quad_DL.nii.gz
+
+sct_maths \
+  -i ${DIR_90}/PAM50_cord_hemi_D.nii.gz \
+  -mul ${DIR_90}/PAM50_cord_hemi_R.nii.gz \
+  -type uint8 \
+  -o ${DIR_90}/PAM50_cord_quad_DR.nii.gz \
+
+sct_maths \
+  -i ${DIR_90}/PAM50_cord_hemi_V.nii.gz \
+  -mul ${DIR_90}/PAM50_cord_hemi_L.nii.gz \
+  -type uint8 \
+  -o ${DIR_90}/PAM50_cord_quad_VL.nii.gz
+
+sct_maths \
+  -i ${DIR_90}/PAM50_cord_hemi_V.nii.gz \
+  -mul ${DIR_90}/PAM50_cord_hemi_R.nii.gz \
+  -type uint8 \
+  -o ${DIR_90}/PAM50_cord_quad_VR.nii.gz

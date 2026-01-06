@@ -1,0 +1,131 @@
+#!/bin/bash
+
+DIR=$1
+ses=$2
+run_min=$3
+num_sub=$4
+num_choose=$5
+num_select=$6
+
+echo -e "\033[7;36m   ${num_choose} of ${num_sub} subjects..   \033[0m"
+
+DIR_grp=${DIR}/03_Processing/grplvl_randomise
+mkdir -vp $DIR_grp
+
+# ------------------------------------------------------------------------------
+# Copy/crop mask from PAM50
+t2=$DIR_grp/PAM50_t2_cr.nii.gz
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_t2.nii.gz  \
+  -xmin 35 -xmax 105 \
+  -ymin 35 -ymax 105 \
+  -zmin 40 -zmax 220 \
+  -o $t2
+
+# ------------------------------------------------------------------------------
+# Copy/crop mask from PAM50
+t2s=$DIR_grp/PAM50_t2s_cr.nii.gz
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_t2s.nii.gz  \
+  -xmin 35 -xmax 105 \
+  -ymin 35 -ymax 105 \
+  -zmin 40 -zmax 220 \
+  -o $t2s
+
+mask=$DIR_grp/PAM50_cord_cr.nii.gz
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_cord.nii.gz  \
+  -xmin 35 -xmax 105 \
+  -ymin 35 -ymax 105 \
+  -zmin 40 -zmax 220 \
+  -o $mask
+
+# ------------------------------------------------------------------------------
+DIR_grp_result=${DIR_grp}/${num_choose}of${num_sub}sub/${run_min}
+mkdir -vp $DIR_grp_result
+rm $DIR_grp_result/${ses}_*
+
+# Create concated cope with number of subjects given in num_sub
+copelist=(`ls ${DIR}/03_Processing/sub-*/sublvl_pam50_cope1/sub-*_${ses}_${run_min}_cope1.nii.gz`)
+cope=$DIR_grp_result/${ses}_${num_sub}sub-all_${run_min}_cope1_cr.nii.gz
+
+sct_image \
+  -i ${copelist[@]:0:$num_sub} \
+  -concat t \
+  -o $cope
+
+sct_crop_image \
+  -i $cope \
+  -xmin 35 -xmax 105 \
+  -ymin 35 -ymax 105 \
+  -zmin 40 -zmax 220 \
+  -o $cope
+
+# ------------------------------------------------------------------------------
+# Calculate binominal for number of permutations and adapt number of selections
+# if its lower
+function nCk2() {
+    num=1
+    den=1
+
+    if (( $2 < $1 - $2 )); then
+        k=$2
+    else
+        k=$(( $1 - $2 ))
+    fi
+
+    for ((i = 1; i <= k; ++i)); do
+        ((num *= $1 + 1 - i)) && ((den *= i))
+    done
+    echo $((num / den))
+}
+
+num_perm=$(nCk2 $num_sub $num_choose)
+
+if [[ $num_perm -lt $num_select ]]; then
+  num_select=$num_perm
+fi
+
+# ------------------------------------------------------------------------------
+# Generate txt file which contains the randomly selected permutations
+matlab -nodisplay -r "m21_I_permutations('"${DIR}"', '"${run_min}"', "${num_sub}", "${num_choose}", "${num_select}"); quit"
+echo
+
+# ------------------------------------------------------------------------------
+# Read text file
+perm_text=$DIR_grp_result/permutations.txt
+
+mapfile -t perm_array < $perm_text
+
+for value in "${perm_array[@]}"; do
+    echo "$value"
+done
+
+# ------------------------------------------------------------------------------
+# Generate cope for each permutations and run randomise
+subprocesses=$num_select
+for ((sel=1;sel<=$num_select;sel++)); do
+  ( sleep $(shuf -i3-20 -n1)
+  # Only keep choosen subjects
+  sct_image \
+    -i $cope \
+    -keep-vol ${perm_array[sel]} \
+    -o $DIR_grp_result/${ses}_${num_choose}of${num_sub}sub-${perm_array[sel+1+num_select]}_${run_min}_cope1_cr.nii.gz
+  sleep 20s
+
+  # Run FSL randomise
+  randomise \
+    -i $DIR_grp_result/${ses}_${num_choose}of${num_sub}sub-${perm_array[sel+1+num_select]}_${run_min}_cope1_cr.nii.gz \
+    -o $DIR_grp_result/${ses}_${num_choose}of${num_sub}sub-${perm_array[sel+1+num_select]}_${run_min} \
+    -m $mask \
+    -1 -v 5 -T
+
+  ) &
+  if [[ $(jobs -r -p | wc -l) -ge $subprocesses ]]; then
+    # now there are $N jobs already running, so wait here for any job
+    # to be finished so there is a place to start next one.
+    wait -n
+  fi
+
+done
+wait

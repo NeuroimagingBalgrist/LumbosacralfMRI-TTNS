@@ -1,0 +1,60 @@
+#!/bin/bash
+DIR_func=$1
+run_min=$2
+DIR_ses=$(dirname $DIR_func)
+
+sub=$(basename $(dirname $DIR_ses))
+ses=$(basename $DIR_ses)
+
+
+# ------------------------------------------------------------------------------
+# Create dir and copy structural image & spinal cord mask
+DIR_pam50=$(dirname $DIR_ses)/sublvl_pam50_cope1
+mkdir -vp $DIR_pam50
+pam50_t2=$DIR_pam50/PAM50_t2.nii.gz
+cp -u $SCT_DIR/data/PAM50/template/PAM50_t2.nii.gz $pam50_t2
+cp -u $SCT_DIR/data/PAM50/template/PAM50_cord.nii.gz $DIR_pam50/PAM50_cord.nii.gz
+
+DIR_megre_zstat=$(dirname $DIR_ses)/sublvl_megre_zstat1
+mkdir -vp $DIR_megre_zstat
+megre=$DIR_megre_zstat/${sub}_${ses}_anat_cr_mc.nii.gz
+cp -u $DIR_ses/anat/anat_cr_mc.nii.gz $megre
+cp -u $DIR_ses/anat/anat_cr_mc_msc_man.nii.gz $DIR_megre_zstat/${sub}_${ses}_anat_cr_mc_msc_man.nii.gz
+
+DIR_epi=$(dirname $DIR_ses)/sublvl_epi_zstat1
+mkdir -vp $DIR_epi
+epi=$DIR_epi/${sub}_${ses}_func_mc_mean.nii.gz
+cp -u $DIR_func/sublvl_func/func_mc_mean.nii.gz $epi
+cp -u $DIR_func/sublvl_func/func_mc_mean_msc_man.nii.gz $DIR_epi/${sub}_${ses}_func_mc_mean_msc_man.nii.gz
+
+
+# ------------------------------------------------------------------------------
+# Transfo cope1 from native to PAM50
+cope_epi=${DIR_func}/sublvl_${run_min}.gfeat/cope1.feat/stats/cope1.nii.gz
+
+epi2megre=$DIR_ses/func/sublvl_func/reg_anat/warp_epi2megre.nii.gz
+megre2pam50=$DIR_ses/anat/reg_temp/warp_anat2template.nii.gz
+
+cope_pam50=$DIR_pam50/${sub}_${ses}_${run_min}_cope1.nii.gz
+
+sct_apply_transfo \
+  -i $cope_epi \
+  -d $pam50_t2 \
+  -w $epi2megre $megre2pam50 \
+  -o $cope_pam50
+
+
+# ------------------------------------------------------------------------------
+# Copy zstat1 to sublvl_epi_zstat1 and transfo from native to megre
+stats_epi=${DIR_func}/sublvl_${run_min}.gfeat/cope1.feat/stats/zstat1.nii.gz
+
+stats_subepi=$DIR_epi/${sub}_${ses}_${run_min}_zstat1.nii.gz
+stats_megre=$DIR_megre_zstat/${sub}_${ses}_${run_min}_zstat1.nii.gz
+
+cp -v $stats_epi $stats_subepi
+
+sct_apply_transfo \
+  -i $stats_epi \
+  -d $megre \
+  -w $epi2megre \
+  -o $stats_megre

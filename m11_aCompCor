@@ -1,0 +1,37 @@
+#!/bin/bash
+
+input=${1::-7}_mc.nii
+
+DIR=$(dirname $input)
+NAME=$(basename $input)
+
+
+# ------------------------------------------------------------------------------
+# Get mcsf mask and cecompress files for matlab
+gzip -dk ${input}.gz
+cp $(dirname ${DIR})/${NAME::-4}_mean_mcsf_cor.nii.gz ${DIR}
+gzip -dk ${input::-4}_mean_mcsf_cor.nii.gz
+
+# ------------------------------------------------------------------------------
+# Run compcor in matlab and fix headers
+mkdir -p $DIR/aCompCor
+cp $input $DIR/aCompCor
+
+matlab -nodisplay -r "m11_acompcor('"$DIR/aCompCor/$NAME"'); quit"
+
+echo -e "\033[7;100m ========== Correct Header ========== \033[0m"
+
+for i in 1 2 3 4 5
+do
+  num=`printf %02g $i`
+  sct_image \
+    -i $DIR/regressors/${NAME::-4}_params_sct_x.nii \
+    -copy-header $DIR/regressors/${NAME::-4}_acompcor_pc${num}.nii \
+    -o $DIR/regressors/${NAME::-4}_acompcor_pc${num}.nii
+done
+
+# ------------------------------------------------------------------------------
+# Remove temp files
+rm $DIR/aCompCor/*noiseROI*
+rm ${input}
+rm ${input::-4}_mean_mcsf_cor*

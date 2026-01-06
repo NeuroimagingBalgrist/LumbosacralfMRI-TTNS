@@ -1,0 +1,29 @@
+#!/bin/bash
+
+DIR=$1
+
+DIR_results=$DIR/04_Results/21_grplvl_randomise
+
+mkdir -vp $DIR_results
+
+# ------------------------------------------------------------------------------
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_cord.nii.gz \
+  -xmin 55 -xmax 85 \
+  -ymin 55 -ymax 85 \
+  -zmin 40  -zmax 220 \
+  -o $DIR_results/PAM50_cord_cr.nii
+
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_t2.nii.gz \
+  -xmin 55 -xmax 85 \
+  -ymin 55 -ymax 85 \
+  -zmin 40  -zmax 220 \
+  -o $DIR_results/PAM50_t2_cr.nii
+
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_t2s.nii.gz \
+  -xmin 55 -xmax 85 \
+  -ymin 55 -ymax 85 \
+  -zmin 40  -zmax 220 \
+  -o $DIR_results/PAM50_t2s_cr.nii

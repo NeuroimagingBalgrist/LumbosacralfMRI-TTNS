@@ -1,0 +1,70 @@
+#!/bin/bash
+
+pathDir=$1
+pathPro=${pathDir}/03_Processing
+pathRes=${pathDir}/04_Results
+
+DIR_results=${pathRes}/30_registration_quality
+mkdir -vp $DIR_results
+
+#-------------------------------------------------------------------------------
+# Get spinal cord mask from PAM50
+sct_crop_image \
+  -i $SCT_DIR/data/PAM50/template/PAM50_cord.nii.gz \
+  -xmin 55 -xmax 85 \
+  -ymin 55 -ymax 85 \
+  -zmin 40 -zmax 220 \
+  -o $DIR_results/PAM50_cord_cr.nii.gz
+
+#-------------------------------------------------------------------------------
+# Mean anat2template image for ses-01
+anat2temp_list_01=(`ls $pathPro/*/ses-01/anat/reg_temp/anat2template.nii.gz`)
+anat2temp_01=$DIR_results/anat2template_ses-01_cr.nii.gz
+
+sct_image \
+  -i ${anat2temp_list_01[@]} \
+  -concat t \
+  -o $anat2temp_01
+
+sct_crop_image \
+  -i $anat2temp_01 \
+  -xmin 55 -xmax 85 \
+  -ymin 55 -ymax 85 \
+  -zmin 40 -zmax 220 \
+  -o $anat2temp_01
+
+matlab -nodisplay -r "m30_registration_quality('"$anat2temp_01"'); quit"
+
+sct_image \
+  -i $DIR_results/PAM50_cord_cr.nii.gz \
+  -copy-header ${anat2temp_01::-7}_mean.nii.gz \
+  -o ${anat2temp_01::-7}_mean.nii.gz
+
+
+#-------------------------------------------------------------------------------
+# Mean anat2template image for ses-02
+if test -f $pathPro/*01/ses-02/anat/reg_temp/anat2template.nii.gz; then
+
+anat2temp_list_02=(`ls $pathPro/*/ses-02/anat/reg_temp/anat2template.nii.gz`)
+anat2temp_02=$DIR_results/anat2template_ses-02_cr.nii.gz
+
+sct_image \
+  -i ${anat2temp_list_02[@]} \
+  -concat t \
+  -o $anat2temp_02
+
+sct_crop_image \
+  -i $anat2temp_02 \
+  -xmin 55 -xmax 85 \
+  -ymin 55 -ymax 85 \
+  -zmin 40 -zmax 220 \
+  -o $anat2temp_02
+
+matlab -nodisplay -r "m30_registration_quality('"$anat2temp_02"'); quit"
+
+sct_image \
+  -i $DIR_results/PAM50_cord_cr.nii.gz \
+  -copy-header ${anat2temp_02::-7}_mean.nii.gz \
+  -o ${anat2temp_02::-7}_mean.nii.gz
+
+fi

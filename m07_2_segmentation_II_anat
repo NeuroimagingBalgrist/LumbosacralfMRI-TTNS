@@ -1,0 +1,33 @@
+#!/bin/bash
+
+anat=$1
+
+DIR=$(dirname $(dirname $anat))
+NAME=$(basename $anat)
+
+anat_segm=$DIR/segm/$NAME
+
+cp ${anat_segm::-7}_msc_jim.nii.gz $(dirname $anat)
+cp ${anat_segm::-7}_csa_kuc.txt $(dirname $anat)/${NAME::-7}_csa.txt
+cp ${anat_segm::-7}_tip_kuc.txt $(dirname $anat)/${NAME::-7}_tip.txt
+
+gzip -dk ${anat}
+gzip -d ${anat::-7}_msc_jim.nii.gz
+
+matlab -nodisplay -r "m07_2_segmentation_II_anat('"${anat::-7}_msc_jim.nii"'); quit"
+
+
+sct_image \
+  -i $anat \
+  -copy-header ${anat::-7}_msc_jim_cor.nii \
+  -o ${anat::-7}_msc_jim_cor.nii
+
+sct_maths \
+  -i ${anat::-7}_msc_jim_cor.nii \
+  -bin 0.000001 \
+  -o ${anat::-7}_msc_man.nii.gz
+
+
+rm ${anat::-3}
+rm ${anat::-7}_msc_jim.nii
+rm ${anat::-7}_msc_jim_cor.nii

@@ -1,0 +1,89 @@
+#!/bin/bash
+
+nifti=$1
+BIDS=$2
+
+mkdir -p $BIDS
+mkdir -p $BIDS/anat
+mkdir -p $BIDS/func
+
+
+# Copy BIDS conform T2w scan
+array=()
+while IFS=  read -r -d $'\0'; do
+    array+=("$REPLY")
+done < <(find $nifti/ -name "*tse_sag.nii.gz" -print0)
+IFS=$'\n' sorted=($(sort -n <<<"${array[*]}"))
+unset IFS
+
+echo Copying:
+echo ${sorted[0]}
+echo ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_T2w.nii.gz
+cp ${sorted[0]} ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_T2w.nii.gz
+
+echo Copying:
+echo ${sorted[0]::-7}.json
+echo ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_T2w.nii.gz
+cp ${sorted[0]::-7}.json ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_T2w.json
+
+
+# Copy BIDS conform MEGRE scans
+array=()
+while IFS=  read -r -d $'\0'; do
+    array+=("$REPLY")
+done < <(find $nifti/ -name "*megre3d_e1.nii.gz*" -print0)
+IFS=$'\n' sorted=($(sort -n <<<"${array[*]}"))
+unset IFS
+
+measurement=(1 3 5 7 9 11)
+for a in {1..6}
+do
+  run=${sorted[${measurement[${a}-1]}]::-10}
+
+  for b in {1..5}
+  do
+    echo Copying:
+    echo ${run}_e${b}.nii.gz
+    echo ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${a}_echo-0${b}_MEGRE.nii.gz
+    cp ${run}_e${b}.nii.gz ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${a}_echo-0${b}_MEGRE.nii.gz
+    cp ${run}_e${b}.json ${BIDS}/anat/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_run-0${a}_echo-0${b}_MEGRE.json
+  done
+done
+
+
+# Copy BIDS conform resting state scan
+array=()
+while IFS=  read -r -d $'\0'; do
+    array+=("$REPLY")
+done < <(find $nifti/ -name "*TE42_rs.nii.gz" -print0)
+IFS=$'\n' sorted=($(sort -n <<<"${array[*]}"))
+unset IFS
+
+echo Copying:
+echo ${sorted[0]}
+echo ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-rest_bold.nii.gz
+cp ${sorted[0]} ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-rest_bold.nii.gz
+
+echo Copying:
+echo ${sorted[0]::-7}.json
+echo ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-rest_bold.json
+cp ${sorted[0]::-7}.json ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-rest_bold.json
+
+
+# Copy BIDS conform electrical stiumulation scans
+array=()
+while IFS=  read -r -d $'\0'; do
+    array+=("$REPLY")
+done < <(find $nifti/ -name "*TE42_task.nii.gz" -print0)
+IFS=$'\n' sorted=($(sort -n <<<"${array[*]}"))
+unset IFS
+
+for a in {1..4}
+do
+  run=${sorted[${a}-1]::-7}
+  echo Copying:
+  echo ${run}.nii.gz
+  echo ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-0${a}_bold.nii.gz
+  cp ${run}.nii.gz ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-0${a}_bold.nii.gz
+  cp ${run}.json ${BIDS}/func/$(basename $(dirname ${BIDS}))_$(basename ${BIDS})_task-ElectStim_run-0${a}_bold.json
+done

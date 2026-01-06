@@ -1,0 +1,300 @@
+#!/bin/bash
+
+DIR=$1
+rest=${DIR}/rest/rest_cr.nii.gz
+run1=${DIR}/run1/run1_cr.nii.gz
+run2=${DIR}/run2/run2_cr.nii.gz
+run3=${DIR}/run3/run3_cr.nii.gz
+run4=${DIR}/run4/run4_cr.nii.gz
+
+DIR_sub=${DIR}/sublvl_func
+rm -rf $DIR_sub/motioncorrection
+mkdir -pv $DIR_sub/motioncorrection
+
+# Concat all runs
+sct_image \
+  -i ${rest} ${run1} ${run2} ${run3} ${run4} \
+  -concat t \
+  -o ${DIR_sub}/temp_func.nii.gz
+
+
+# MCFLIRT motion correction
+mcflirt \
+  -in ${DIR_sub}/temp_func.nii.gz \
+  -meanvol \
+  -spline_final -cost leastsquares -report -plots \
+  -o ${DIR_sub}/temp_func_mcf.nii.gz
+
+mcf_params_txt=${DIR_sub}/motioncorrection/func_params_mcf.par
+mv ${DIR_sub}/temp_func_mcf.nii.gz.par $mcf_params_txt
+
+# Create cylindric mask
+sct_maths \
+  -i ${DIR_sub}/temp_func_mcf.nii.gz \
+  -mean t \
+  -o ${DIR_sub}/temp_func_mcf_mean.nii.gz
+
+sct_get_centerline \
+  -i ${DIR_sub}/temp_func_mcf_mean.nii.gz \
+  -c t2s \
+  -o ${DIR_sub}/temp_func_mcf_mean_centerline.nii.gz
+
+sct_create_mask \
+  -i ${DIR_sub}/temp_func_mcf_mean.nii.gz \
+  -p centerline,${DIR_sub}/temp_func_mcf_mean_centerline.nii.gz -size 15 -f cylinder \
+  -o ${DIR_sub}/temp_func_mcf_mean_maskcy.nii.gz
+
+#
+# SCT motion correction
+sct_fmri_moco -i ${DIR_sub}/temp_func_mcf.nii.gz \
+  -m ${DIR_sub}/temp_func_mcf_mean_maskcy.nii.gz \
+  -g 1 -param poly=1,iterAvg=1 -x spline \
+  -ofolder ${DIR_sub}
+
+mv ${DIR_sub}/temp_func_mcf_moco.nii.gz ${DIR_sub}/func_mc.nii.gz
+mv ${DIR_sub}/temp_func_mcf_moco_mean.nii.gz ${DIR_sub}/func_mc_mean.nii.gz
+
+sct_params_txt=${DIR_sub}/motioncorrection/func_params_sct.tsv
+mv ${DIR_sub}/moco_params.tsv $sct_params_txt
+
+sct_params_x=${DIR_sub}/motioncorrection/func_params_sct_x.nii
+gzip -d ${DIR_sub}/moco_params_x.nii.gz
+mv ${DIR_sub}/moco_params_x.nii $sct_params_x
+
+sct_params_y=${DIR_sub}/motioncorrection/func_params_sct_y.nii
+gzip -d ${DIR_sub}/moco_params_y.nii.gz
+mv ${DIR_sub}/moco_params_y.nii $sct_params_y
+
+# ------------------------------------------------------------------------------
+# Create func_params_mcf_**.nii
+matlab -nodisplay -r "m06_mcf_params('"$mcf_params_txt"'); quit"
+mcf_params_rx=${DIR_sub}/motioncorrection/func_params_mcf_rx.nii
+mcf_params_ry=${DIR_sub}/motioncorrection/func_params_mcf_ry.nii
+mcf_params_rz=${DIR_sub}/motioncorrection/func_params_mcf_rz.nii
+mcf_params_tx=${DIR_sub}/motioncorrection/func_params_mcf_tx.nii
+mcf_params_ty=${DIR_sub}/motioncorrection/func_params_mcf_ty.nii
+mcf_params_tz=${DIR_sub}/motioncorrection/func_params_mcf_tz.nii
+
+
+# ------------------------------------------------------------------------------
+# Create rest files
+rest_vol="$(seq -s ',' 0 428)"
+sct_image \
+  -i ${DIR_sub}/func_mc.nii.gz \
+  -keep-vol ${rest_vol} \
+  -o ${rest::-7}_mc.nii.gz \
+
+sct_maths -i ${rest::-7}_mc.nii.gz -mean t -o ${rest::-7}_mc_mean.nii.gz
+
+mkdir -pv $(dirname ${rest})/regressors
+sct_image \
+  -i $sct_params_x \
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_sct_x.nii
+sct_image \
+  -i $sct_params_y \
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_sct_y.nii
+sct_image \
+  -i $mcf_params_rx\
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_mcf_rx.nii
+sct_image \
+  -i $mcf_params_ry\
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_mcf_ry.nii
+sct_image \
+  -i $mcf_params_rz\
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_mcf_rz.nii
+sct_image \
+  -i $mcf_params_tx\
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_mcf_tx.nii
+sct_image \
+  -i $mcf_params_ty\
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_mcf_ty.nii
+sct_image \
+  -i $mcf_params_tz\
+  -keep-vol ${rest_vol} \
+  -o $(dirname ${rest})/regressors/$(basename ${rest::-7})_mc_params_mcf_tz.nii
+
+# ------------------------------------------------------------------------------
+# Create run1 files
+run1_vol="$(seq -s ',' 429 857)"
+sct_image \
+  -i ${DIR_sub}/func_mc.nii.gz \
+  -keep-vol ${run1_vol} \
+  -o ${run1::-7}_mc.nii.gz \
+
+sct_maths -i ${run1::-7}_mc.nii.gz -mean t -o ${run1::-7}_mc_mean.nii.gz
+
+mkdir -pv $(dirname ${run1})/regressors
+sct_image \
+  -i $sct_params_x \
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_sct_x.nii
+sct_image \
+  -i $sct_params_y \
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_sct_y.nii
+sct_image \
+  -i $mcf_params_rx\
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_mcf_rx.nii
+sct_image \
+  -i $mcf_params_ry\
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_mcf_ry.nii
+sct_image \
+  -i $mcf_params_rz\
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_mcf_rz.nii
+sct_image \
+  -i $mcf_params_tx\
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_mcf_tx.nii
+sct_image \
+  -i $mcf_params_ty\
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_mcf_ty.nii
+sct_image \
+  -i $mcf_params_tz\
+  -keep-vol ${run1_vol} \
+  -o $(dirname ${run1})/regressors/$(basename ${run1::-7})_mc_params_mcf_tz.nii
+
+# ------------------------------------------------------------------------------
+# Create run2 files
+run2_vol="$(seq -s ',' 858 1286)"
+sct_image \
+  -i ${DIR_sub}/func_mc.nii.gz \
+  -keep-vol ${run2_vol} \
+  -o ${run2::-7}_mc.nii.gz \
+
+sct_maths -i ${run2::-7}_mc.nii.gz -mean t -o ${run2::-7}_mc_mean.nii.gz
+
+mkdir -pv $(dirname ${run2})/regressors
+sct_image \
+  -i $sct_params_x \
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_sct_x.nii
+sct_image \
+  -i $sct_params_y \
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_sct_y.nii
+sct_image \
+  -i $mcf_params_rx\
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_mcf_rx.nii
+sct_image \
+  -i $mcf_params_ry\
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_mcf_ry.nii
+sct_image \
+  -i $mcf_params_rz\
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_mcf_rz.nii
+sct_image \
+  -i $mcf_params_tx\
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_mcf_tx.nii
+sct_image \
+  -i $mcf_params_ty\
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_mcf_ty.nii
+sct_image \
+  -i $mcf_params_tz\
+  -keep-vol ${run2_vol} \
+  -o $(dirname ${run2})/regressors/$(basename ${run2::-7})_mc_params_mcf_tz.nii
+
+# ------------------------------------------------------------------------------
+# Create run3 files
+run3_vol="$(seq -s ',' 1287 1715)"
+sct_image \
+  -i ${DIR_sub}/func_mc.nii.gz \
+  -keep-vol ${run3_vol} \
+  -o ${run3::-7}_mc.nii.gz \
+
+sct_maths -i ${run3::-7}_mc.nii.gz -mean t -o ${run3::-7}_mc_mean.nii.gz
+
+mkdir -pv $(dirname ${run3})/regressors
+sct_image \
+  -i $sct_params_x \
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_sct_x.nii
+sct_image \
+  -i $sct_params_y \
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_sct_y.nii
+sct_image \
+  -i $mcf_params_rx\
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_mcf_rx.nii
+sct_image \
+  -i $mcf_params_ry\
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_mcf_ry.nii
+sct_image \
+  -i $mcf_params_rz\
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_mcf_rz.nii
+sct_image \
+  -i $mcf_params_tx\
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_mcf_tx.nii
+sct_image \
+  -i $mcf_params_ty\
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_mcf_ty.nii
+sct_image \
+  -i $mcf_params_tz\
+  -keep-vol ${run3_vol} \
+  -o $(dirname ${run3})/regressors/$(basename ${run3::-7})_mc_params_mcf_tz.nii
+
+# ------------------------------------------------------------------------------
+# Create run4 files
+run4_vol="$(seq -s ',' 1716 2144)"
+sct_image \
+  -i ${DIR_sub}/func_mc.nii.gz \
+  -keep-vol ${run4_vol} \
+  -o ${run4::-7}_mc.nii.gz \
+
+sct_maths -i ${run4::-7}_mc.nii.gz -mean t -o ${run4::-7}_mc_mean.nii.gz
+
+mkdir -pv $(dirname ${run4})/regressors
+sct_image \
+  -i $sct_params_x \
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_sct_x.nii
+sct_image \
+  -i $sct_params_y \
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_sct_y.nii
+sct_image \
+  -i $mcf_params_rx\
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_mcf_rx.nii
+sct_image \
+  -i $mcf_params_ry\
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_mcf_ry.nii
+sct_image \
+  -i $mcf_params_rz\
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_mcf_rz.nii
+sct_image \
+  -i $mcf_params_tx\
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_mcf_tx.nii
+sct_image \
+  -i $mcf_params_ty\
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_mcf_ty.nii
+sct_image \
+  -i $mcf_params_tz\
+  -keep-vol ${run4_vol} \
+  -o $(dirname ${run4})/regressors/$(basename ${run4::-7})_mc_params_mcf_tz.nii
+
+# ------------------------------------------------------------------------------
+rm ${DIR_sub}/temp*

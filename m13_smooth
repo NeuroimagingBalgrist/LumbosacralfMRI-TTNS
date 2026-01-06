@@ -1,0 +1,19 @@
+#!/bin/bash
+
+input=${1::-7}_mc.nii
+
+gzip -dfk ${input}.gz
+
+DIR=$(dirname $input)
+
+mkdir -pv $DIR/temp
+
+cd $(dirname $0)
+matlab -nodisplay -r "m13_smooth('"$input"'); quit"
+
+mv $DIR/temp/4D.nii \
+  ${input::-4}_sm.nii
+gzip -f ${input::-4}_sm.nii
+
+rm -r $DIR/temp
+rm ${input}

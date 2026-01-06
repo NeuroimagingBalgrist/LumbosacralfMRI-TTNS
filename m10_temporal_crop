@@ -1,0 +1,110 @@
+#!/bin/bash
+
+input=${1::-7}_mc.nii.gz
+
+DIR=$(dirname $input)
+NAME=$(basename $input)
+
+
+# ------------------------------------------------------------------------------
+# Copy run with 10min of data and moco regressors
+DIR_10min=${DIR}/10_min
+mkdir -vp $DIR_10min
+cp -r ${DIR}/regressors ${DIR_10min}
+cp ${input} ${DIR_10min}
+
+
+# ------------------------------------------------------------------------------
+# Create run with 8min of data and match the moco regressors
+DIR_8min=${DIR}/8_min
+mkdir -vp $DIR_8min
+cp -r ${DIR}/regressors ${DIR_8min}
+cp ${input} ${DIR_8min}
+
+vol_8min="$(seq -s ',' 0 342)"
+sct_image \
+  -i ${DIR_8min}/${NAME} \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/${NAME} \
+
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_sct_x.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_sct_x.nii
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_sct_y.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_sct_y.nii
+
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_mcf_rx.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_mcf_rx.nii
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_mcf_ry.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_mcf_ry.nii
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_mcf_rz.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_mcf_rz.nii
+
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_mcf_tx.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_mcf_tx.nii
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_mcf_ty.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_mcf_ty.nii
+sct_image \
+  -i ${DIR_8min}/regressors/${NAME::-7}_params_mcf_tz.nii \
+  -keep-vol ${vol_8min} \
+  -o ${DIR_8min}/regressors/${NAME::-7}_params_mcf_tz.nii
+# ------------------------------------------------------------------------------
+# Create run with 6min of data and match the moco regressors
+DIR_6min=${DIR}/6_min
+mkdir -vp $DIR_6min
+cp -r ${DIR}/regressors ${DIR_6min}
+cp ${input} ${DIR_6min}
+
+vol_6min="$(seq -s ',' 0 257)"
+sct_image \
+  -i ${DIR_6min}/${NAME} \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/${NAME} \
+
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_sct_x.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_sct_x.nii
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_sct_y.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_sct_y.nii
+
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_mcf_rx.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_mcf_rx.nii
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_mcf_ry.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_mcf_ry.nii
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_mcf_rz.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_mcf_rz.nii
+
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_mcf_tx.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_mcf_tx.nii
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_mcf_ty.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_mcf_ty.nii
+sct_image \
+  -i ${DIR_6min}/regressors/${NAME::-7}_params_mcf_tz.nii \
+  -keep-vol ${vol_6min} \
+  -o ${DIR_6min}/regressors/${NAME::-7}_params_mcf_tz.nii

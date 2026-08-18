@@ -32,7 +32,7 @@ parameterised on the command line.
 
 ## 2. Data organisation
 
-The NIfTI-convered data follow the BIDS format. Each participant has two sessions approximately one week apart:
+The NIfTI-converted data follow the BIDS format. Each participant has two sessions approximately one week apart:
 
 ```
 data/
@@ -50,7 +50,30 @@ slices of 5 mm, 0.5 x 0.5 mm, 5 echoes. Stimulation: right tibial nerve at 3.1 H
 pulse width, 5 mA above motor threshold, block design of 15 s rest and 15 s stimulation,
 20 blocks per run.
 
-## 3. Preprocessing
+## 3. Pipeline execution
+
+The pipeline is organized as a set of modules (m00-m98). The order and selection of modules are controlled through m00_PipMaster.m, which serves as the main pipeline script. Before execution, the script must be configured with the appropriate participant, session, directory, and analysis settings. Depending on the chosen configuration, processing can be performed for individual participants, sessions, or groups of participants.
+
+Modules are generally executed in numerical order.
+
+m02_convert
+m03_sorting
+m04_anat_preproc
+m05_cropping
+m06_2_motioncorrection
+...
+m16_stat_trafo
+
+Subsequent group-level analyses are performed using:
+
+m21_I_fslrandomise_grplvl_perm
+m22_fslrandomise_difference
+
+Methodological analyses (reliability, run-duration, sample-size, Dice coefficient, etc.) are implemented in the scripts described in Section 8.
+
+The repository includes data from one representative participant to facilitate testing and validation of the workflow. The shared dataset contains raw BIDS-formatted NIfTI data, manual segmentations, and outputs from intermediate processing steps, allowing users to verify results throughout the analysis pipeline. Prior to execution, users should review and configure the participant, session, directory, and analysis settings in m00_PipMaster.m according to their dataset and intended analysis.
+``
+## 4. Preprocessing
 
 | step | module | does |
 |---|---|---|
@@ -62,7 +85,7 @@ Motion correction is run on the concatenated rest-plus-task series so that both 
 and between-run displacements are corrected, then split back into runs. Volume outliers are
 flagged with `fsl_motion_outliers` (DVARS, box-plot threshold) inside `m12_regressors`.
 
-## 4. Segmentation and physiological noise
+## 5. Segmentation and physiological noise
 
 | step | module | does |
 |---|---|---|
@@ -73,7 +96,7 @@ flagged with `fsl_motion_outliers` (DVARS, box-plot threshold) inside `m12_regre
 The cord and CSF are segmented manually in JIM because automatic segmentation is less
 reliable in the lumbosacral cord. The anatomical mask is realigned to the EPI before use.
 
-## 5. Registration to template
+## 6. Registration to template
 
 | step | module | does |
 |---|---|---|
@@ -86,7 +109,7 @@ label 59, at PAM50 slice 143, the caudal end of segment L3 per Frostell et al., 
 forward warp carries statistics into PAM50 for the group analysis; the backward warp carries
 spinal-cord segment definitions back into EPI space for the BOLD signal-change calculation.
 
-## 6. First-, subject- and group-level GLM
+## 7. First-, subject- and group-level GLM
 
 | step | module | does |
 |---|---|---|
@@ -111,7 +134,7 @@ family-wise-error correction at p < 0.05 and p < 0.01.
 > `ncopeinputs=1` at subject level) to match the paper. An earlier FLOBS variant
 > (`convolve1=7`, three basis functions) is superseded.
 
-## 7. Reliability, run-duration and sample-size analyses
+## 8. Reliability, run-duration and sample-size analyses
 
 The methodological analyses that are the focus of the paper are implemented through separate, analysis-specific scripts:
 
@@ -132,7 +155,7 @@ single-measure ICC(3,1); both via the R `irr` package. Within- and between-sessi
 BOLD signal change and mean Z-statistics use a two-way repeated-measures ANOVA with Tukey correction
 (`emmeans`).
 
-## 8. How to cite
+## 9. How to cite
 
 If you use this pipeline, please cite Kündig et al. (paper reference to be added on publication).
 The pipeline derives from LufMRI-pip (https://doi.org/10.1162/imag_a_00227).

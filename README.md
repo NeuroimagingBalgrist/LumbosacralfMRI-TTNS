@@ -43,6 +43,9 @@ The NIfTI-converted data follow the BIDS format. Each participant has two sessio
 03_Processing/   all pipeline outputs and manual segmentations
 ├── sub-ltrNN/
    ├── ses-01/  and  ses-02/
+   ├── sublvl_epi_zstat1
+   ├── sublvl_megre_zstat1
+   ├── sublvl_pam50_cope1
 ```
 
 Acquisition, for reference. Functional: T2*-weighted inner-field-of-view single-shot GE-EPI
@@ -73,7 +76,7 @@ m22_fslrandomise_difference
 
 Methodological analyses (reliability, run-duration, sample-size, Dice coefficient, etc.) are implemented in the scripts described in Section 8.
 
-The repository includes data from one representative participant to facilitate testing and validation of the workflow. The shared dataset contains raw BIDS-formatted NIfTI data, manual segmentations, and outputs from intermediate processing steps, allowing users to verify results throughout the analysis pipeline. Prior to execution, users should review and configure the participant, session, directory, and analysis settings in m00_PipMaster.m according to their dataset and intended analysis.
+The repository includes data from one representative participant to facilitate testing and validation of the workflow. The shared dataset contains raw BIDS-formatted NIfTI data, manual segmentations, and selected outputs from intermediate processing steps, allowing users to verify results throughout the analysis pipeline. Owing to repository size limitations, not all intermediate derivatives generated during the original analysis are included; omitted outputs can be reproduced using the provided pipeline. Prior to execution, users should review and configure the participant, session, directory, and analysis settings in m00_PipMaster.m according to their dataset and intended analysis.
 ``
 ## 4. Preprocessing
 

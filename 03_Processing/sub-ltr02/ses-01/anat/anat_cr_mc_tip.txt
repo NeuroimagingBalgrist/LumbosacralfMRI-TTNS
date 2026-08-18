@@ -1,0 +1,2 @@
+Tip slice in fsl/sct convention (first slice is 0)
+5

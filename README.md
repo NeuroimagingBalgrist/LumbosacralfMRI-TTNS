@@ -48,6 +48,17 @@ The NIfTI-converted data follow the BIDS format. Each participant has two sessio
    ├── sublvl_pam50_cope1
 ```
 
+The repository carries the data of one representative participant (`sub-ltr02`, both sessions),
+so the pipeline can be run end to end without access to the full dataset. The NIfTI volumes are
+tracked with Git LFS: a plain clone yields pointer files rather than images, so fetch them with
+
+```
+git lfs install
+git clone https://github.com/NeuroimagingBalgrist/LumbosacralfMRI-TTNS.git
+cd LumbosacralfMRI-TTNS
+git lfs pull
+```
+
 Acquisition, for reference. Functional: T2*-weighted inner-field-of-view single-shot GE-EPI
 (ZOOMit), TE 42 ms, TR 1400 ms, 15 axial-oblique slices of 5 mm, 1 x 1 mm in plane, 429
 volumes, 10:06 min per run. Structural reference: 3D multi-echo gradient-echo (ME-GRE), 20

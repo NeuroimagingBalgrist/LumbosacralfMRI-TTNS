@@ -1,0 +1,8 @@
+# Imaging volumes are stored with Git LFS; everything else is plain git.
+*.nii.gz filter=lfs diff=lfs merge=lfs -text
+*.nii    filter=lfs diff=lfs merge=lfs -text
+
+# The dummy FEAT registration files in m14_reg (identity transforms and
+# placeholder volumes, see the note in m14_fslfeat_*) were committed before
+# LFS was introduced and stay in plain git.
+m14_reg/*.nii.gz -filter -diff -merge

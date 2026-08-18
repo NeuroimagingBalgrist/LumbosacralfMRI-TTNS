@@ -35,12 +35,13 @@ parameterised on the command line.
 The NIfTI-converted data follow the BIDS format. Each participant has two sessions approximately one week apart:
 
 ```
-data/
+02_BIDS/
 ├── sub-ltrNN/
-│   ├── ses-01/  and  ses-02/
-│   │   ├── anat/   ME-GRE (6 measurements x 5 echoes), sagittal T2w
-│   │   └── func/   1 resting-state run + 4 task runs (TTNS)
-└── derivatives/   all pipeline outputs
+   ├── ses-01/  and  ses-02/
+   │   ├── anat/   ME-GRE (6 measurements x 5 echoes), sagittal T2w
+   │   └── func/   1 resting-state run + 4 task runs (TTNS)
+03_Processing/   all pipeline outputs and manual segmentations
+   ├── ses-01/  and  ses-02/
 ```
 
 Acquisition, for reference. Functional: T2*-weighted inner-field-of-view single-shot GE-EPI

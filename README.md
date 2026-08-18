@@ -41,6 +41,7 @@ The NIfTI-converted data follow the BIDS format. Each participant has two sessio
    │   ├── anat/   ME-GRE (6 measurements x 5 echoes), sagittal T2w
    │   └── func/   1 resting-state run + 4 task runs (TTNS)
 03_Processing/   all pipeline outputs and manual segmentations
+├── sub-ltrNN/
    ├── ses-01/  and  ses-02/
 ```
 

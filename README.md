@@ -65,7 +65,7 @@ Modules are generally executed in numerical order.
 `m04_anat_preproc`
 `m05_cropping`
 `m06_2_motioncorrection`
-`...`
+...
 `m16_stat_trafo`
 
 Subsequent group-level analyses are performed using:

@@ -60,7 +60,6 @@ pulse width, 5 mA above motor threshold, block design of 15 s rest and 15 s stim
 The pipeline is organized as a set of modules (m00-m98). The order and selection of modules are controlled through m00_PipMaster.m, which serves as the main pipeline script. Before execution, the script must be configured with the appropriate participant, session, directory, and analysis settings. Depending on the chosen configuration, processing can be performed for individual participants, sessions, or groups of participants.
 
 Modules are generally executed in numerical order.
-
 m02_convert
 m03_sorting
 m04_anat_preproc
@@ -70,7 +69,6 @@ m06_2_motioncorrection
 m16_stat_trafo
 
 Subsequent group-level analyses are performed using:
-
 m21_I_fslrandomise_grplvl_perm
 m22_fslrandomise_difference
 

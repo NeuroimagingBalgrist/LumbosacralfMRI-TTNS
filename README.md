@@ -35,18 +35,21 @@ parameterised on the command line.
 The NIfTI-converted data follow the BIDS format. Each participant has two sessions approximately one week apart:
 
 ```
-02_BIDS/
-├── sub-ltrNN/
-   ├── ses-01/  and  ses-02/
-   │   ├── anat/   ME-GRE (6 measurements x 5 echoes), sagittal T2w
-   │   └── func/   1 resting-state run + 4 task runs (TTNS)
-03_Processing/   all pipeline outputs and manual segmentations
-├── sub-ltrNN/
-   ├── ses-01/  and  ses-02/
-   ├── sublvl_epi_zstat1
-   ├── sublvl_megre_zstat1
-   ├── sublvl_pam50_cope1
+data/
+├── 02_BIDS/
+│   ├── sub-ltrNN/
+│      ├── ses-01/  and  ses-02/
+│      │   ├── anat/   ME-GRE (6 measurements x 5 echoes), sagittal T2w
+│      │   └── func/   1 resting-state run + 4 task runs (TTNS)
+├── 03_Processing/   all pipeline outputs and manual segmentations
+│   ├── sub-ltrNN/
+│      ├── ses-01/  and  ses-02/
+│      ├── sublvl_epi_zstat1
+│      ├── sublvl_megre_zstat1
+│      ├── sublvl_pam50_cope1
 ```
+
+Set `directory` in `m00_PipMaster` to the `data` folder; the pipeline expects `02_BIDS` and `03_Processing` directly underneath it.
 
 The repository carries the data of one representative participant (`sub-ltr02`, both sessions),
 so the pipeline can be run end to end without access to the full dataset. The NIfTI volumes are

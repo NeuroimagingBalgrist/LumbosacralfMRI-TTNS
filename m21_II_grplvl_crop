@@ -6,8 +6,8 @@ run_min=$3
 num_sub=$4
 num_choose=$5
 
-DIR_grp=$DIR/03_Processing/grplvl_randomise/${num_choose}of${num_sub}sub/${run_min}
-DIR_results=$DIR/04_Results/21_grplvl_randomise/${num_choose}of${num_sub}sub/${run_min}
+DIR_grp=$DIR/03_Processing/grplvl_randomise_varsm-2/${num_choose}of${num_sub}sub/${run_min}
+DIR_results=$DIR/04_Results/21_grplvl_randomise_varsm-2/${num_choose}of${num_sub}sub/${run_min}
 
 mkdir -vp $DIR_results
 rm $DIR_results/${ses}*

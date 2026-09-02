@@ -220,6 +220,53 @@ if DoElectStim
     clear("current_thresh", "current_stim")
 end
 
+%% add Framewise displacement column
+
+FDmean = NaN(height(data),1);
+
+entry = 1;
+for sub = 1:number_sub
+    subID = sprintf('sub-ltr%02d', sub);
+
+    for ses = 1:number_ses
+        sesID = sprintf('ses-%02d', ses);
+
+        for run = 1:6
+
+            if run == 1
+                entry = entry + 1;
+
+            elseif run == 2
+                entry = entry + 1;
+
+            else
+
+                FDfile = sprintf('%s/%s/%s/func/run%d/10_min/regressors/run%d_cr_FDslice.nii.gz', ...
+                    pathPro, subID, sesID, run-2, run-2);
+
+                if isfile(FDfile)
+
+                    FD = niftiread(FDfile);
+
+                    % Mean across all slices and volumes
+                    FDmean(entry) = mean(FD(:),'omitnan');
+
+                else
+
+                    fprintf('FD: %s_%s_run%d missing!\n', ...
+                        subID, sesID, run-2);
+
+                end
+
+                entry = entry + 1;
+
+            end
+        end
+    end
+end
+
+data.FDmean = FDmean;
+
 %% write table to .csv and .mat
 writetable(data, sprintf('%s/80_overview.csv', pathRes))
 save(sprintf('%s/80_overview.mat', pathRes), 'data', '-v7.3');

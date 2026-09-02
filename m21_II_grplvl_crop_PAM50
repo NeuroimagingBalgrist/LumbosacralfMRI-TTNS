@@ -2,7 +2,7 @@
 
 DIR=$1
 
-DIR_results=$DIR/04_Results/21_grplvl_randomise
+DIR_results=$DIR/04_Results/21_grplvl_randomise_varsm-2
 
 mkdir -vp $DIR_results
 

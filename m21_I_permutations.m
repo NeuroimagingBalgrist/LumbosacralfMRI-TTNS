@@ -7,7 +7,7 @@ function m21_I_permutations(pathDir, run, subjects, choose, selections)
     % choose = 5;
     % selections = 10;
 
-    options_text = sprintf('%s/grplvl_randomise/%dof%dsub/%s/permutations.txt',pathPro, choose, subjects, run);
+    options_text = sprintf('%s/grplvl_randomise_varsm-2/%dof%dsub/%s/permutations.txt',pathPro, choose, subjects, run);
 
 
     %% Create permutations and select (pseudo-)randomly

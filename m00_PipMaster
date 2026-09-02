@@ -423,7 +423,7 @@ for m in ${!sessionall[@]}; do
 
   #--------------------------------------------------------------------------------------------------------------------------------
   echo $'\n'End $(date +'%T %d/%m/%Y')
-  ) > $directory/03_Processing/grplvl_randomise/${choose_numall[$l]}of${sub_num}_${sessionall[$m]}_log.txt
+  ) > $directory/03_Processing/grplvl_randomise_varsm-2/${choose_numall[$l]}of${sub_num}_${sessionall[$m]}_log.txt
   echo -e "\033[7;97m \n ===== Ended ===== \n ${choose_num}of${sub_num}_${session} at $(date +'%T %d/%m/%Y') \n \033[0m"
 
 done

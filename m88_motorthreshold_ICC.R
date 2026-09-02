@@ -20,7 +20,7 @@ motorthresh <- cbind(
 icc_result <- icc(
   motorthresh,
   model = "twoway",
-  type  = "consistency",
+  type  = "agreement",
   unit  = "single"
 )
 

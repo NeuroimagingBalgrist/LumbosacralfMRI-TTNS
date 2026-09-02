@@ -165,6 +165,7 @@ The methodological analyses that are the focus of the paper are implemented thro
 | sample-size (Monte-Carlo subsets) | `m21_I_permutations.m` |
 | registration quality | `m30_registration_quality.m` |
 | spinal-level and axial masks | `m90_neuro_segm`, `m90_axial_segm`, `m91_grplvl_masks` |
+| frequency_map | `m92_frequency_map` |
 
 Consistency across runs and sessions is quantified with Kendall's coefficient of concordance;
 between-session agreement of motor threshold, tSNR and outlier counts with the absolute-agreement

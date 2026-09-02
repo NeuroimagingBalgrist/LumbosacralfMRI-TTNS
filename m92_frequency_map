@@ -1,0 +1,74 @@
+#!/bin/bash
+
+BASE_DIR="/media/neuroimaging/SSD_ChK/lumbar_fMRI/14_LTR/03_Processing/grplvl_randomise_varsm-2"
+
+for SUBDIR in "${BASE_DIR}"/*of25sub; do
+
+    WORKDIR="${SUBDIR}/4run_10min"
+
+    if [ ! -d "${WORKDIR}" ]; then
+        echo "Skipping ${SUBDIR} (4run_10min not found)"
+        continue
+    fi
+
+    echo ""
+    echo "=================================================="
+    echo "Processing folder: ${WORKDIR}"
+    echo "=================================================="
+
+    cd "${WORKDIR}" || continue
+
+    for SES in ses-01 ses-02; do
+
+        echo ""
+        echo "Processing ${SES}..."
+
+        TMPDIR="frequency_tmp_${SES}"
+        mkdir -p "${TMPDIR}"
+
+        MAPS=( ${SES}*_tfce_corrp_tstat1.nii.gz )
+
+        # Check if files exist
+        if [ ! -e "${MAPS[0]}" ]; then
+            echo "No ${SES} tfce_corrp maps found."
+            continue
+        fi
+
+        NMAPS=${#MAPS[@]}
+        echo "Found ${NMAPS} maps."
+
+        BINFILES=()
+
+        for FILE in "${MAPS[@]}"; do
+
+            BASENAME=$(basename "${FILE}" .nii.gz)
+            BINFILE="${TMPDIR}/${BASENAME}_bin.nii.gz"
+
+            sct_maths \
+                -i "${FILE}" \
+                -bin 0.95 \
+                -o "${BINFILE}"
+
+            BINFILES+=("${BINFILE}")
+
+        done
+
+        # Create 4D stack
+        sct_image \
+            -i "${BINFILES[@]}" \
+            -concat t \
+            -o "${TMPDIR}/all_bin_4D.nii.gz"
+
+      # Directly compute voxel-wise frequency (0-1)
+sct_maths \
+    -i "${TMPDIR}/all_bin_4D.nii.gz" \
+    -mean t \
+    -o "${SES}_frequency_map.nii.gz"
+``
+
+    done
+
+done
+
+echo ""
+echo "All folders processed."

@@ -9,7 +9,7 @@ num_select=$6
 
 echo -e "\033[7;36m   ${num_choose} of ${num_sub} subjects..   \033[0m"
 
-DIR_grp=${DIR}/03_Processing/grplvl_randomise
+DIR_grp=${DIR}/03_Processing/grplvl_randomise_varsm-2
 mkdir -vp $DIR_grp
 
 # ------------------------------------------------------------------------------

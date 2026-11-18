@@ -480,7 +480,7 @@ for i = 1:length(result_p_name)
     end
     for k = 1:length(areaoi_name)
 %             disp(nlevel_name{l})
-            areaoi_tscorefull(k, i) = mean(nonzeros(result_t_image.(result_t_name{i}).*areaoi_image.(areaoi_name{k})));
+            areaoi_tscorefull(k, i) = mean(nonzeros(result_t_image.(result_t_name{i}).*nlevel_range.*areaoi_image.(areaoi_name{k})));
     end
 end
 
